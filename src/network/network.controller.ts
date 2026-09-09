@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { NetworkService } from './network.service';
 import { CreateNetworkInquiryDto } from './dto/create-network-inquiry.dto';
 
@@ -6,6 +7,7 @@ import { CreateNetworkInquiryDto } from './dto/create-network-inquiry.dto';
 export class NetworkController {
   constructor(private readonly networkService: NetworkService) {}
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('inquiries')
   async createInquiry(@Body() dto: CreateNetworkInquiryDto, @Request() req: any) {
     const userId = req.user?.id || undefined;
