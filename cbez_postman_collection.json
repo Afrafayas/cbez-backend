@@ -1,0 +1,1020 @@
+{
+	"info": {
+		"_postman_id": "cbez-b2c-api-collection-v2",
+		"name": "Cbez API Collection",
+		"description": "Complete API Postman collection for the Cbez B2C Backend platform. Updated with standardized API response messages ({ success, message, data }) for ID fetches, plus dedicated endpoints for Products by Category and Products by Brand.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Get API Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "Returns welcome/health check message from the backend API."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.collectionVariables.set('auth_token', jsonData.token);",
+									"        console.log('auth_token set successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"John Customer\",\n  \"phone\": \"+919876543210\",\n  \"role\": \"customer\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new customer account."
+					},
+					"response": []
+				},
+				{
+					"name": "Register Seller",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.collectionVariables.set('auth_token', jsonData.token);",
+									"        console.log('auth_token set successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"seller@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"Alex Commerce\",\n  \"phone\": \"+919876543211\",\n  \"role\": \"seller\",\n  \"shopName\": \"Tech Zone Electronics\",\n  \"ownerName\": \"Alex Commerce\",\n  \"whatsapp\": \"+919876543211\",\n  \"address\": \"123 MG Road, Marine Drive\",\n  \"city\": \"Kochi\",\n  \"category\": \"Mobiles & Tablets\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new seller account along with their store creation."
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.token) {",
+									"        pm.collectionVariables.set('auth_token', jsonData.token);",
+									"        console.log('auth_token set successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"seller@example.com\",\n  \"password\": \"Password123!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate user with email/phone and password, returning JWT bearer token."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Fetch details of currently logged-in user profile."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Brands",
+			"item": [
+				{
+					"name": "Get All Brands",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/brands",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"brands"
+							]
+						},
+						"description": "Fetch list of all brands."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Brand By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/brands/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"brands",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "brand_id_here",
+									"description": "ID of the brand"
+								}
+							]
+						},
+						"description": "Fetch single brand by ID. Returns standardized { success: true, message: 'Brand fetched successfully', data: { brand } } response."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Brand",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Apple\",\n  \"logo\": \"https://example.com/logos/apple.png\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/brands",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"brands"
+							]
+						},
+						"description": "Create a new brand (requires authentication)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Brand",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Apple Inc.\",\n  \"logo\": \"https://example.com/logos/apple-updated.png\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/brands/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"brands",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "brand_id_here",
+									"description": "ID of the brand to update"
+								}
+							]
+						},
+						"description": "Update an existing brand by ID (requires authentication)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Brand",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/brands/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"brands",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "brand_id_here",
+									"description": "ID of the brand to delete"
+								}
+							]
+						},
+						"description": "Delete a brand by ID (requires authentication)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Categories",
+			"item": [
+				{
+					"name": "Get All Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories"
+							]
+						},
+						"description": "Fetch list of all categories."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Category By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/categories/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "category_id_here",
+									"description": "ID of the category"
+								}
+							]
+						},
+						"description": "Fetch single category by ID. Returns standardized { success: true, message: 'Category fetched successfully', data: { category } } response."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Category",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Mobiles & Tablets\",\n  \"slug\": \"mobiles-tablets\",\n  \"image\": \"https://example.com/categories/mobiles.png\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories"
+							]
+						},
+						"description": "Create a new product category (requires authentication)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Category",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Smartphones & Gadgets\",\n  \"slug\": \"smartphones-gadgets\",\n  \"image\": \"https://example.com/categories/smartphones.png\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/categories/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "category_id_here",
+									"description": "ID of the category to update"
+								}
+							]
+						},
+						"description": "Update an existing category by ID (requires authentication)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Category",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/categories/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"categories",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "category_id_here",
+									"description": "ID of the category to delete"
+								}
+							]
+						},
+						"description": "Delete a category by ID (requires authentication)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Products",
+			"item": [
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products?search=&category=&brand=&minPrice=&maxPrice=&city=&sortBy=&shopId=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search term for product name or description"
+								},
+								{
+									"key": "category",
+									"value": "",
+									"description": "Filter by category name or slug"
+								},
+								{
+									"key": "brand",
+									"value": "",
+									"description": "Filter by brand name"
+								},
+								{
+									"key": "minPrice",
+									"value": "",
+									"description": "Minimum price filter"
+								},
+								{
+									"key": "maxPrice",
+									"value": "",
+									"description": "Maximum price filter"
+								},
+								{
+									"key": "city",
+									"value": "",
+									"description": "Filter by shop city location"
+								},
+								{
+									"key": "sortBy",
+									"value": "",
+									"description": "Sort order (e.g. price_asc, price_desc, newest)"
+								},
+								{
+									"key": "shopId",
+									"value": "",
+									"description": "Filter products by specific seller shop ID"
+								}
+							]
+						},
+						"description": "Fetch all products with optional filters for search, category, brand, price range, city, sorting, and shop."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Products By Category",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/category/:category",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"category",
+								":category"
+							],
+							"variable": [
+								{
+									"key": "category",
+									"value": "Mobiles",
+									"description": "Category name or query term"
+								}
+							]
+						},
+						"description": "Fetch products belonging to a specific category. Returns { success: true, message: 'Products for category ... fetched successfully', data: { products: [...] } }."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Products By Brand",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/brand/:brand",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"brand",
+								":brand"
+							],
+							"variable": [
+								{
+									"key": "brand",
+									"value": "Apple",
+									"description": "Brand name to filter by"
+								}
+							]
+						},
+						"description": "Fetch products belonging to a specific brand. Returns { success: true, message: 'Products for brand ... fetched successfully', data: { products: [...] } }."
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Products (Seller)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/mine",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"mine"
+							]
+						},
+						"description": "Fetch all products belonging to the logged-in seller's shop."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "product_id_here",
+									"description": "ID of the product"
+								}
+							]
+						},
+						"description": "Fetch single product details by ID. Returns standardized { success: true, message: 'Product fetched successfully', data: { product } } response."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product (Seller)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"iPhone 15 Pro 128GB\",\n  \"brand\": \"Apple\",\n  \"category\": \"Mobiles & Tablets\",\n  \"description\": \"Brand new Apple iPhone 15 Pro with Titanium build.\",\n  \"price\": 129990,\n  \"stock\": 5,\n  \"specs\": {\n    \"color\": \"Natural Titanium\",\n    \"storage\": \"128GB\",\n    \"ram\": \"8GB\"\n  },\n  \"images\": [\n    \"https://example.com/products/iphone15pro-1.jpg\",\n    \"https://example.com/products/iphone15pro-2.jpg\"\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/products",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							]
+						},
+						"description": "Create a new product under the authenticated seller's store."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product (Seller)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "product_id_here",
+									"description": "ID of product to delete"
+								}
+							]
+						},
+						"description": "Delete a product by ID owned by the logged-in seller."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Shops",
+			"item": [
+				{
+					"name": "Get All Shops",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops?city=&category=&search=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"shops"
+							],
+							"query": [
+								{
+									"key": "city",
+									"value": "",
+									"description": "Filter shops by city"
+								},
+								{
+									"key": "category",
+									"value": "",
+									"description": "Filter shops by main category"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search shop by name or description"
+								}
+							]
+						},
+						"description": "Fetch all registered shops with optional filters for city, category, and search query."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Shop By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/shops/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"shops",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "shop_id_here",
+									"description": "ID of the shop"
+								}
+							]
+						},
+						"description": "Fetch single shop profile and details by ID. Returns standardized { success: true, message: 'Shop fetched successfully', data: { shop } } response."
+					},
+					"response": []
+				},
+				{
+					"name": "Create or Update My Shop (Seller)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Tech Zone Store\",\n  \"ownerName\": \"Alex Commerce\",\n  \"phone\": \"+919876543211\",\n  \"whatsapp\": \"+919876543211\",\n  \"address\": \"Shop 42, Electronics Hub, Marine Drive\",\n  \"city\": \"Kochi\",\n  \"category\": \"Mobiles & Tablets\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/shops/mine",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"shops",
+								"mine"
+							]
+						},
+						"description": "Create or update store details for the authenticated seller."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Leads",
+			"item": [
+				{
+					"name": "Create Lead (Contact Seller)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"shopId\": \"shop_id_here\",\n  \"productId\": \"product_id_here\",\n  \"productName\": \"iPhone 15 Pro 128GB\",\n  \"customerName\": \"John Customer\",\n  \"customerPhone\": \"+919876543210\",\n  \"contactType\": \"whatsapp\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/leads",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"leads"
+							]
+						},
+						"description": "Submit a new customer inquiry/lead to a seller (contactType can be 'call' or 'whatsapp')."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seller Leads (Seller)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{auth_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/leads/seller",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"leads",
+								"seller"
+							]
+						},
+						"description": "Fetch all customer leads submitted for the authenticated seller's shop."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
