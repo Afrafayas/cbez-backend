@@ -19,6 +19,12 @@ export class ProductsService {
       throw new ForbiddenException('You must create a shop profile before adding products');
     }
 
+    if (!shop.verified) {
+      throw new ForbiddenException(
+        'Your shop account is pending Admin verification. You can upload products once Admin approves your shop.',
+      );
+    }
+
     const product = await this.prisma.product.create({
       data: {
         name: dto.name,
