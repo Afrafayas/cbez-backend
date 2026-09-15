@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateShopDto } from './dto/create-shop.dto';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class ShopsService {
   constructor(
     private prisma: PrismaService,
     private activityLogsService: ActivityLogsService,
+    private subscriptionsService: SubscriptionsService,
   ) { }
 
   async createOrUpdateForOwner(ownerId: string, dto: CreateShopDto) {
@@ -70,6 +72,7 @@ export class ShopsService {
     const shops = await this.prisma.shop.findMany({
       where,
       include: {
+        subscription: { include: { plan: true } },
         _count: {
           select: { products: true },
         },
@@ -90,6 +93,7 @@ export class ShopsService {
     const shops = await this.prisma.shop.findMany({
       where: { verified: false },
       include: {
+        subscription: { include: { plan: true } },
         _count: { select: { products: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -106,6 +110,7 @@ export class ShopsService {
     const shops = await this.prisma.shop.findMany({
       where: { verified: true },
       include: {
+        subscription: { include: { plan: true } },
         _count: { select: { products: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -122,6 +127,7 @@ export class ShopsService {
     const shop = await this.prisma.shop.findUnique({
       where: { id },
       include: {
+        subscription: { include: { plan: true } },
         products: true,
       },
     });
@@ -208,7 +214,24 @@ export class ShopsService {
     const updatedShop = await this.prisma.shop.update({
       where: { id },
       data: { verified: newStatus },
+      include: { subscription: { include: { plan: true } } },
     });
+
+    if (newStatus) {
+      const existingSub = await this.prisma.shopSubscription.findUnique({ where: { shopId: id } });
+      if (!existingSub) {
+        let starterPlan = await this.prisma.subscriptionPlan.findFirst({
+          where: { status: 'ACTIVE' },
+          orderBy: { productLimit: 'asc' },
+        });
+        if (!starterPlan) {
+          starterPlan = await this.prisma.subscriptionPlan.create({
+            data: { name: 'Free Starter Plan', description: 'Default starter plan for new approved shops', productLimit: 5, status: 'ACTIVE' },
+          });
+        }
+        await this.subscriptionsService.assignPlanToShop({ shopId: id, planId: starterPlan.id });
+      }
+    }
 
     if (shop.ownerId) {
       await this.activityLogsService.log(
@@ -261,5 +284,3 @@ export class ShopsService {
     };
   }
 }
-
-

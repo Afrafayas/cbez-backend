@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateProductDto } from './dto/create-product.dto';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private activityLogsService: ActivityLogsService,
+    private subscriptionsService: SubscriptionsService,
   ) { }
 
   async create(sellerUserId: string, dto: CreateProductDto) {
@@ -24,6 +26,9 @@ export class ProductsService {
         'Your shop account is pending Admin verification. You can upload products once Admin approves your shop.',
       );
     }
+
+    // Check Subscription Plan & Product Limit dynamically
+    await this.subscriptionsService.checkProductLimit(shop.id);
 
     // Validate category and perform dynamic spec validation if category spec config exists
     const categoryRecord = await this.prisma.category.findFirst({

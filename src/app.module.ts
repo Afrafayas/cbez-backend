@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -15,6 +15,7 @@ import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { FollowsModule } from './follows/follows.module';
 import { NetworkModule } from './network/network.module';
 import { LocationModule } from './location/location.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { LocationModule } from './location/location.module';
     FollowsModule,
     NetworkModule,
     LocationModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

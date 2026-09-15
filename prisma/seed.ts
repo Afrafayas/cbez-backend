@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+﻿import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding Electronics Categories with Specification Configurations...');
+  console.log('🌱 Seeding Electronics Categories & Subscription Plans...');
 
   const categories = [
     {
@@ -108,6 +108,51 @@ async function main() {
   }
 
   console.log(`✅ Successfully seeded ${categories.length} official Used Electronics category templates!`);
+
+  console.log('🌱 Seeding Default Subscription Plans...');
+
+  const plans = [
+    {
+      name: 'Free Starter Plan',
+      description: 'Default starter plan for new verified store partners (up to 5 active device listings).',
+      productLimit: 5,
+      status: 'ACTIVE',
+      price: 0,
+    },
+    {
+      name: 'Standard Store Plan',
+      description: 'Growth plan for active electronics retailers (up to 25 active device listings).',
+      productLimit: 25,
+      status: 'ACTIVE',
+      price: 499,
+    },
+    {
+      name: 'Premium Pro Plan',
+      description: 'Pro enterprise plan for high volume electronics dealers (up to 100 active device listings).',
+      productLimit: 100,
+      status: 'ACTIVE',
+      price: 999,
+    },
+  ];
+
+  for (const planData of plans) {
+    const existing = await prisma.subscriptionPlan.findUnique({
+      where: { name: planData.name },
+    });
+
+    if (existing) {
+      await prisma.subscriptionPlan.update({
+        where: { id: existing.id },
+        data: planData,
+      });
+    } else {
+      await prisma.subscriptionPlan.create({
+        data: planData,
+      });
+    }
+  }
+
+  console.log(`✅ Successfully seeded ${plans.length} subscription plans!`);
 }
 
 main()

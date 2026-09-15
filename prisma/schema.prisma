@@ -49,6 +49,7 @@ model Shop {
   products  Product[]
   leads     Lead[]
   followers Follow[]
+  subscription ShopSubscription?
 }
 
 model Product {
@@ -142,4 +143,30 @@ model ActivityLog {
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
+}
+
+
+model SubscriptionPlan {
+  id           String             @id @default(auto()) @map("_id") @db.ObjectId
+  name         String             @unique
+  description  String?
+  productLimit Int                @default(10)
+  status       String             @default("ACTIVE")
+  price        Float              @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  subscriptions ShopSubscription[]
+}
+
+model ShopSubscription {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shopId    String   @unique @db.ObjectId
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  planId    String   @db.ObjectId
+  plan      SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
 }
