@@ -28,4 +28,10 @@ export class CreateShopDto {
   @IsString()
   @IsNotEmpty()
   category: string;
+
+  @IsOptional()
+  latitude?: number;
+
+  @IsOptional()
+  longitude?: number;
 }

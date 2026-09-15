@@ -12,4 +12,7 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsString()
   image?: string;
+
+  @IsOptional()
+  specConfig?: any[];
 }

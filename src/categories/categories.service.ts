@@ -7,6 +7,25 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
 
+  private formatCategory(category: any) {
+    let specConfig = [];
+    try {
+      specConfig = JSON.parse(category.specConfigJson || '[]');
+    } catch (e) {
+      specConfig = [];
+    }
+
+    return {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      image: category.image,
+      specConfig,
+      createdAt: category.createdAt,
+      updatedAt: category.updatedAt,
+    };
+  }
+
   async create(dto: CreateCategoryDto) {
     const existing = await this.prisma.category.findUnique({
       where: { name: dto.name },
@@ -21,13 +40,14 @@ export class CategoriesService {
         name: dto.name,
         slug,
         image: dto.image || null,
+        specConfigJson: JSON.stringify(dto.specConfig || []),
       },
     });
     return {
       success: true,
       message: 'Category created successfully',
       data: {
-        category,
+        category: this.formatCategory(category),
       },
     };
   }
@@ -40,7 +60,7 @@ export class CategoriesService {
       success: true,
       message: 'Categories fetched successfully',
       data: {
-        categories,
+        categories: categories.map((c) => this.formatCategory(c)),
       },
     };
   }
@@ -56,7 +76,33 @@ export class CategoriesService {
       success: true,
       message: 'Category fetched successfully',
       data: {
-        category,
+        category: this.formatCategory(category),
+      },
+    };
+  }
+
+  async getCategorySpecifications(idOrSlugOrName: string) {
+    let category = await this.prisma.category.findFirst({
+      where: {
+        OR: [
+          { id: idOrSlugOrName },
+          { slug: idOrSlugOrName },
+          { name: { equals: idOrSlugOrName, mode: 'insensitive' } },
+        ],
+      },
+    });
+
+    if (!category) {
+      throw new NotFoundException(`Category "${idOrSlugOrName}" not found`);
+    }
+
+    const formatted = this.formatCategory(category);
+    return {
+      success: true,
+      categoryName: category.name,
+      categorySlug: category.slug,
+      data: {
+        specifications: formatted.specConfig,
       },
     };
   }
@@ -66,15 +112,22 @@ export class CategoriesService {
     if (!existing) {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
+
+    const updateData: any = { ...dto };
+    if (dto.specConfig !== undefined) {
+      updateData.specConfigJson = JSON.stringify(dto.specConfig);
+      delete updateData.specConfig;
+    }
+
     const category = await this.prisma.category.update({
       where: { id },
-      data: dto,
+      data: updateData,
     });
     return {
       success: true,
       message: 'Category updated successfully',
       data: {
-        category,
+        category: this.formatCategory(category),
       },
     };
   }

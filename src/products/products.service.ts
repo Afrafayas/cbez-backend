@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -8,7 +8,7 @@ export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private activityLogsService: ActivityLogsService,
-  ) {}
+  ) { }
 
   async create(sellerUserId: string, dto: CreateProductDto) {
     const shop = await this.prisma.shop.findUnique({
@@ -25,6 +25,53 @@ export class ProductsService {
       );
     }
 
+    // Validate category and perform dynamic spec validation if category spec config exists
+    const categoryRecord = await this.prisma.category.findFirst({
+      where: {
+        OR: [
+          { name: { equals: dto.category, mode: 'insensitive' } },
+          { slug: dto.category },
+        ],
+      },
+    });
+
+    const sanitizedSpecs: Record<string, string> = {};
+    if (categoryRecord && categoryRecord.specConfigJson) {
+      try {
+        const specRules: any[] = JSON.parse(categoryRecord.specConfigJson);
+        const incomingSpecs = dto.specs || {};
+
+        for (const rule of specRules) {
+          const val = incomingSpecs[rule.key];
+
+          // Check required spec fields
+          if (rule.required && (val === undefined || val === null || val === '')) {
+            throw new BadRequestException(
+              `Specification field "${rule.label}" (${rule.key}) is required for category "${dto.category}"`,
+            );
+          }
+
+          // Validate select option values if configured
+          if (val !== undefined && val !== null && val !== '') {
+            if (rule.type === 'select' && Array.isArray(rule.options) && rule.options.length > 0) {
+              if (!rule.options.includes(val)) {
+                throw new BadRequestException(
+                  `Invalid option "${val}" for "${rule.label}". Allowed options are: ${rule.options.join(', ')}`,
+                );
+              }
+            }
+            sanitizedSpecs[rule.key] = String(val);
+          }
+        }
+      } catch (e) {
+        if (e instanceof BadRequestException) throw e;
+        // Fallback: keep provided specs if JSON parsing failed
+        Object.assign(sanitizedSpecs, dto.specs || {});
+      }
+    } else {
+      Object.assign(sanitizedSpecs, dto.specs || {});
+    }
+
     const product = await this.prisma.product.create({
       data: {
         name: dto.name,
@@ -33,7 +80,8 @@ export class ProductsService {
         description: dto.description,
         price: Number(dto.price),
         stock: Number(dto.stock),
-        specsJson: JSON.stringify(dto.specs || {}),
+        specsJson: JSON.stringify(sanitizedSpecs),
+        conditionJson: JSON.stringify(dto.conditionInfo || {}),
         imagesJson: JSON.stringify(dto.images || []),
         shopId: shop.id,
       },
@@ -96,6 +144,10 @@ export class ProductsService {
     city?: string;
     sortBy?: string;
     shopId?: string;
+    lat?: number;
+    lng?: number;
+    radiusKm?: number;
+    condition?: string;
   }) {
     const where: any = {};
 
@@ -173,13 +225,96 @@ export class ProductsService {
       },
     });
 
+    let formattedProducts = products.map((p) => this.formatProduct(p));
+
+    // Handle Location Filtering by Latitude & Longitude
+    if (
+      query.lat !== undefined &&
+      query.lng !== undefined &&
+      !isNaN(Number(query.lat)) &&
+      !isNaN(Number(query.lng))
+    ) {
+      const userLat = Number(query.lat);
+      const userLng = Number(query.lng);
+      const radiusKm = query.radiusKm ? Number(query.radiusKm) : 10;
+
+      formattedProducts = formattedProducts
+        .map((p: any) => {
+          if (
+            p.shop &&
+            p.shop.latitude !== null &&
+            p.shop.longitude !== null &&
+            p.shop.latitude !== undefined &&
+            p.shop.longitude !== undefined
+          ) {
+            const dist = this.calculateHaversineDistance(
+              userLat,
+              userLng,
+              Number(p.shop.latitude),
+              Number(p.shop.longitude),
+            );
+            const distanceKm = Math.round(dist * 10) / 10;
+            return {
+              ...p,
+              distanceKm,
+              shop: { ...p.shop, distanceKm },
+            };
+          }
+          return p;
+        })
+        .filter(
+          (p: any) =>
+            p.distanceKm === undefined || p.distanceKm <= radiusKm,
+        );
+
+      if (query.sortBy === 'distance') {
+        formattedProducts.sort(
+          (a: any, b: any) =>
+            (a.distanceKm ?? 999999) - (b.distanceKm ?? 999999),
+        );
+      }
+    }
+
+    // Handle Condition Filtering (e.g. "Grade A+ Like New", "Mint", "Good")
+    if (
+      query.condition &&
+      query.condition.trim() &&
+      query.condition !== 'all' &&
+      query.condition !== 'All'
+    ) {
+      const condTerm = query.condition.trim().toLowerCase();
+      formattedProducts = formattedProducts.filter((p: any) => {
+        const itemCond = p.conditionInfo?.condition?.toLowerCase() || '';
+        return itemCond.includes(condTerm);
+      });
+    }
+
     return {
       success: true,
       message: 'Products fetched successfully',
       data: {
-        products: products.map((p) => this.formatProduct(p)),
+        products: formattedProducts,
       },
     };
+  }
+
+  private calculateHaversineDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   async findOne(id: string) {
@@ -289,12 +424,19 @@ export class ProductsService {
 
   private formatProduct(p: any) {
     let specs = {};
+    let conditionInfo = {};
     let images: string[] = [];
 
     try {
       specs = JSON.parse(p.specsJson || '{}');
     } catch (e) {
       specs = {};
+    }
+
+    try {
+      conditionInfo = JSON.parse(p.conditionJson || '{}');
+    } catch (e) {
+      conditionInfo = {};
     }
 
     try {
@@ -314,6 +456,7 @@ export class ProductsService {
       shopId: p.shopId,
       shop: p.shop,
       specs,
+      conditionInfo,
       images,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,

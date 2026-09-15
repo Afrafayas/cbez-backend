@@ -16,6 +16,8 @@ model User {
   name      String
   phone     String?  @unique
   role      String   @default("customer") // "customer" | "seller" | "admin"
+  latitude  Float?
+  longitude Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -36,6 +38,8 @@ model Shop {
   category  String
   verified  Boolean  @default(false)
   rating    Float    @default(4.5)
+  latitude  Float?
+  longitude Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -48,22 +52,23 @@ model Shop {
 }
 
 model Product {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  brand       String
-  category    String
-  description String
-  price       Float
-  stock       Int      @default(1)
-  specsJson   String   @default("{}") // Stored as JSON string e.g. {"RAM": "8GB"}
-  imagesJson  String   @default("[]") // Stored as JSON string of image URLs
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  brand         String
+  category      String
+  description   String
+  price         Float
+  stock         Int      @default(1)
+  specsJson     String   @default("{}") // Stored as JSON string e.g. {"ram": "8GB"}
+  conditionJson String?  @default("{}") // Stored as JSON string of used device condition info
+  imagesJson    String   @default("[]") // Stored as JSON string of image URLs
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  shopId      String   @db.ObjectId
-  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId        String   @db.ObjectId
+  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
-  leads       Lead[]
+  leads         Lead[]
 }
 
 model Lead {
@@ -111,12 +116,13 @@ model NetworkInquiry {
 }
 
 model Category {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String   @unique
-  slug      String?  @unique
-  image     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String   @unique
+  slug           String?  @unique
+  image          String?
+  specConfigJson String?  @default("[]") // JSON string defining spec configuration fields for this category
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Brand {

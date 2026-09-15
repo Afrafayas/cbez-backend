@@ -1,4 +1,6 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { UsedDeviceConditionDto } from './used-device-condition.dto';
 
 export class CreateProductDto {
   @IsString()
@@ -27,6 +29,11 @@ export class CreateProductDto {
 
   @IsOptional()
   specs?: Record<string, string>;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UsedDeviceConditionDto)
+  conditionInfo?: UsedDeviceConditionDto;
 
   @IsOptional()
   images?: string[];

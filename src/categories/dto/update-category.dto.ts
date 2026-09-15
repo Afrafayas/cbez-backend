@@ -12,4 +12,7 @@ export class UpdateCategoryDto {
   @IsOptional()
   @IsString()
   image?: string;
+
+  @IsOptional()
+  specConfig?: any[];
 }

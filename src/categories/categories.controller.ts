@@ -18,6 +18,11 @@ export class CategoriesController {
     return this.categoriesService.findOne(id);
   }
 
+  @Get(':id/specifications')
+  async getSpecifications(@Param('id') id: string) {
+    return this.categoriesService.getCategorySpecifications(id);
+  }
+
   @UseGuards(AuthGuard('jwt'))
   @Post()
   async create(@Body() dto: CreateCategoryDto) {

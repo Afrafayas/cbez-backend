@@ -23,8 +23,12 @@ export class ProductsController {
     @Query('city') city?: string,
     @Query('sortBy') sortBy?: string,
     @Query('shopId') shopId?: string,
+    @Query('lat') lat?: number,
+    @Query('lng') lng?: number,
+    @Query('radiusKm') radiusKm?: number,
+    @Query('condition') condition?: string,
   ) {
-    return this.productsService.findAll({ search, category, brand, minPrice, maxPrice, city, sortBy, shopId });
+    return this.productsService.findAll({ search, category, brand, minPrice, maxPrice, city, sortBy, shopId, lat, lng, radiusKm, condition });
   }
 
   @Get('category/:category')

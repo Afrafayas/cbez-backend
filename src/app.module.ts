@@ -14,6 +14,7 @@ import { UsersModule } from './users/users.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { FollowsModule } from './follows/follows.module';
 import { NetworkModule } from './network/network.module';
+import { LocationModule } from './location/location.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { NetworkModule } from './network/network.module';
     ActivityLogsModule,
     FollowsModule,
     NetworkModule,
+    LocationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
