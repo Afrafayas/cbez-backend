@@ -21,35 +21,52 @@ export class LocationService {
       throw new BadRequestException('Address parameter is required');
     }
 
-    if (!this.apiKey || this.apiKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
-      throw new BadRequestException('Google Maps API key is missing or invalid in backend configuration');
+    if (this.apiKey && this.apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY') {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.apiKey}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.status === 'OK' && data.results && data.results.length > 0) {
+          const result = data.results[0];
+          const { lat, lng } = result.geometry.location;
+          return {
+            success: true,
+            address: address,
+            formattedAddress: result.formatted_address,
+            latitude: lat,
+            longitude: lng,
+            placeId: result.place_id,
+          };
+        }
+      } catch (error) {
+        // Continue to fallback below
+      }
     }
 
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.apiKey}`;
-
+    // Fallback: OpenStreetMap Nominatim API (Free, no key required)
     try {
-      const response = await fetch(url);
+      const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+      const response = await fetch(nomUrl, {
+        headers: { 'User-Agent': 'CbezBackend/1.0' },
+      });
       const data = await response.json();
 
-      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-        throw new BadRequestException(`Geocoding failed: ${data.status} ${data.error_message || ''}`);
+      if (Array.isArray(data) && data.length > 0) {
+        const first = data[0];
+        return {
+          success: true,
+          address: address,
+          formattedAddress: first.display_name,
+          latitude: parseFloat(first.lat),
+          longitude: parseFloat(first.lon),
+          placeId: String(first.place_id),
+        };
       }
-
-      const result = data.results[0];
-      const { lat, lng } = result.geometry.location;
-
-      return {
-        success: true,
-        address: address,
-        formattedAddress: result.formatted_address,
-        latitude: lat,
-        longitude: lng,
-        placeId: result.place_id,
-      };
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new InternalServerErrorException(`Failed to connect to Google Maps API: ${error.message}`);
+      // Continue below
     }
+
+    throw new BadRequestException(`Could not geocode location for address: "${address}". Please select coordinates directly.`);
   }
 
   /**
@@ -60,34 +77,56 @@ export class LocationService {
       throw new BadRequestException('Latitude and Longitude parameters are required');
     }
 
-    if (!this.apiKey || this.apiKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
-      throw new BadRequestException('Google Maps API key is missing or invalid in backend configuration');
+    if (this.apiKey && this.apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY') {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.apiKey}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.status === 'OK' && data.results && data.results.length > 0) {
+          const result = data.results[0];
+          return {
+            success: true,
+            latitude: lat,
+            longitude: lng,
+            formattedAddress: result.formatted_address,
+            placeId: result.place_id,
+            addressComponents: result.address_components,
+          };
+        }
+      } catch (error) {
+        // Continue to fallback below
+      }
     }
 
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.apiKey}`;
-
+    // Fallback: OpenStreetMap Nominatim API (Free, no key required)
     try {
-      const response = await fetch(url);
+      const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+      const response = await fetch(nomUrl, {
+        headers: { 'User-Agent': 'CbezBackend/1.0' },
+      });
       const data = await response.json();
 
-      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-        throw new BadRequestException(`Reverse geocoding failed: ${data.status} ${data.error_message || ''}`);
+      if (data && data.display_name) {
+        return {
+          success: true,
+          latitude: lat,
+          longitude: lng,
+          formattedAddress: data.display_name,
+          placeId: String(data.place_id || 'osm'),
+          addressComponents: data.address || {},
+        };
       }
-
-      const result = data.results[0];
-
-      return {
-        success: true,
-        latitude: lat,
-        longitude: lng,
-        formattedAddress: result.formatted_address,
-        placeId: result.place_id,
-        addressComponents: result.address_components,
-      };
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      throw new InternalServerErrorException(`Failed to connect to Google Maps API: ${error.message}`);
+      // Continue below
     }
+
+    return {
+      success: true,
+      latitude: lat,
+      longitude: lng,
+      formattedAddress: `Coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      placeId: 'coords_fallback',
+    };
   }
 
   /**
