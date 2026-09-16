@@ -51,6 +51,19 @@ export class SubscriptionsService {
     };
   }
 
+  async findActivePlans() {
+    const plans = await this.prisma.subscriptionPlan.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { productLimit: 'asc' },
+    });
+
+    return {
+      success: true,
+      message: 'Active subscription plans fetched successfully',
+      data: { plans },
+    };
+  }
+
   async findOnePlan(id: string) {
     const plan = await this.prisma.subscriptionPlan.findUnique({
       where: { id },
@@ -102,6 +115,54 @@ export class SubscriptionsService {
       success: true,
       message: 'Subscription plan updated successfully',
       data: { plan },
+    };
+  }
+
+  async togglePlanStatus(id: string, status?: string) {
+    const plan = await this.prisma.subscriptionPlan.findUnique({ where: { id } });
+    if (!plan) {
+      throw new NotFoundException(`Subscription plan with ID "${id}" not found`);
+    }
+
+    const newStatus = status ? status : plan.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    const updatedPlan = await this.prisma.subscriptionPlan.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+
+    return {
+      success: true,
+      message: `Subscription plan "${updatedPlan.name}" status updated to ${newStatus}`,
+      data: { plan: updatedPlan },
+    };
+  }
+
+  async deletePlan(id: string) {
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { subscriptions: true },
+        },
+      },
+    });
+
+    if (!plan) {
+      throw new NotFoundException(`Subscription plan with ID "${id}" not found`);
+    }
+
+    if (plan._count.subscriptions > 0) {
+      throw new BadRequestException(
+        `Cannot delete subscription plan "${plan.name}" because it is currently assigned to ${plan._count.subscriptions} active shop(s). Deactivate the plan instead or reassign the shops first.`,
+      );
+    }
+
+    await this.prisma.subscriptionPlan.delete({ where: { id } });
+
+    return {
+      success: true,
+      message: `Subscription plan "${plan.name}" deleted successfully`,
+      data: { id },
     };
   }
 
