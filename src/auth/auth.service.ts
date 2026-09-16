@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -22,26 +22,35 @@ export class AuthService {
     }
 
     if (role === 'seller') {
-      if (!dto.email) {
-        throw new BadRequestException('Email address is required for registration');
+      const requiredFields: Array<{ field: keyof RegisterDto; message: string }> = [
+        { field: 'email', message: 'Email address is required for shop registration' },
+        { field: 'ownerName', message: 'Owner name is required for shop registration' },
+        { field: 'profileImage', message: 'Owner profile image is required for shop registration' },
+        { field: 'phone', message: 'Phone number is required for shop registration' },
+        { field: 'address', message: 'Physical business address is required for shop registration' },
+        { field: 'city', message: 'City is required for shop registration' },
+        { field: 'district', message: 'District is required for shop registration' },
+        { field: 'country', message: 'Country is required for shop registration' },
+        { field: 'aadhaarNumber', message: 'Aadhaar number is required for seller verification' },
+        { field: 'panNumber', message: 'PAN number is required for seller verification' },
+        { field: 'subscriptionPlanId', message: 'Subscription plan selection is required for shop registration' },
+      ];
+
+      for (const { field, message } of requiredFields) {
+        const val = dto[field];
+        if (typeof val !== 'string' || !val.trim()) {
+          throw new BadRequestException(message);
+        }
       }
+
       if (!dto.shopName && !dto.name) {
         throw new BadRequestException('Shop business name is required for registration');
       }
-      if (!dto.ownerName) {
-        throw new BadRequestException('Owner name is required for registration');
+      if (dto.latitude === undefined || dto.latitude === null || isNaN(Number(dto.latitude))) {
+        throw new BadRequestException('Shop location latitude is required. Please select your shop location on map.');
       }
-      if (!dto.phone) {
-        throw new BadRequestException('Phone number is required for registration');
-      }
-      if (!dto.whatsapp) {
-        throw new BadRequestException('WhatsApp number is required for registration');
-      }
-      if (!dto.address) {
-        throw new BadRequestException('Business physical address is required for registration');
-      }
-      if (!dto.city) {
-        throw new BadRequestException('City is required for registration');
+      if (dto.longitude === undefined || dto.longitude === null || isNaN(Number(dto.longitude))) {
+        throw new BadRequestException('Shop location longitude is required. Please select your shop location on map.');
       }
     } else {
       if (!dto.phone && !dto.email) {
@@ -77,9 +86,21 @@ export class AuthService {
         ownerName: dto.ownerName || dto.name,
         phone: dto.phone || '',
         whatsapp: dto.whatsapp || dto.phone || '',
-        address: dto.address || 'Market Location',
-        city: dto.city || 'Kochi',
+        address: dto.address,
+        city: dto.city,
+        district: dto.district || 'Ernakulam',
+        country: dto.country || 'India',
+        aadhaarNumber: dto.aadhaarNumber,
+        panNumber: dto.panNumber,
+        profileImage: dto.profileImage,
         category: dto.category || 'Mobiles & Tablets',
+        latitude: Number(dto.latitude),
+        longitude: Number(dto.longitude),
+        gstNumber: dto.gstNumber || null,
+        websiteUrl: dto.websiteUrl || null,
+        businessHours: dto.businessHours || null,
+        businessDescription: dto.businessDescription || null,
+        alternatePhone: dto.alternatePhone || null,
       };
     }
 
@@ -96,6 +117,24 @@ export class AuthService {
         shop: true,
       },
     });
+
+    // Assign chosen subscription plan to shop
+    if (user.shop && dto.subscriptionPlanId) {
+      try {
+        await this.prisma.shopSubscription.upsert({
+          where: { shopId: user.shop.id },
+          create: {
+            shopId: user.shop.id,
+            planId: dto.subscriptionPlanId,
+          },
+          update: {
+            planId: dto.subscriptionPlanId,
+          },
+        });
+      } catch (err) {
+        console.warn('Subscription assignment during registration fallback:', err);
+      }
+    }
 
     const token = this.generateToken(user.id, user.email || user.phone || user.id, user.role);
 
@@ -124,13 +163,9 @@ export class AuthService {
       throw new BadRequestException('Please provide email or phone number to login');
     }
 
-    if (!dto.password) {
-      throw new BadRequestException('Please provide password');
-    }
-
     let user: any = null;
     if (dto.email) {
-      user = await this.prisma.user.findUnique({
+      user = await this.prisma.user.findFirst({
         where: { email: dto.email.toLowerCase() },
         include: { shop: true },
       });
@@ -145,26 +180,23 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (user.password) {
-      const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
+    const isMatch = await bcrypt.compare(dto.password, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const token = this.generateToken(user.id, user.email || user.phone || user.id, user.role);
 
-    // Log Activity
     await this.activityLogsService.log(
       user.id,
       'LOGIN',
-      `User ${user.name} logged in successfully`,
+      `Logged in ${user.role} account (${user.name})`,
     );
 
     const { password, ...userWithoutPassword } = user;
     return {
       success: true,
-      message: 'Login successful',
+      message: 'Logged in successfully',
       data: {
         user: userWithoutPassword,
         token,
@@ -179,24 +211,21 @@ export class AuthService {
       where: { id: userId },
       include: { shop: true },
     });
-
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new NotFoundException('User profile not found');
     }
-
     const { password, ...userWithoutPassword } = user;
     return {
       success: true,
-      message: 'User profile fetched successfully',
-      data: {
-        user: userWithoutPassword,
-      },
-      ...userWithoutPassword,
+      data: userWithoutPassword,
+      user: userWithoutPassword,
     };
   }
 
-  private generateToken(userId: string, email: string, role: string): string {
-    const payload = { sub: userId, email, role };
-    return this.jwtService.sign(payload);
+  private generateToken(userId: string, identifier: string, role: string): string {
+    return this.jwtService.sign(
+      { sub: userId, identifier, role },
+      { expiresIn: '7d' },
+    );
   }
 }

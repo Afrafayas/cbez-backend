@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -136,11 +136,25 @@ export class ShopsService {
       throw new NotFoundException(`Shop with ID ${id} not found`);
     }
 
+    const currentProducts = shop.products ? shop.products.length : 0;
+    const plan = shop.subscription?.plan;
+    const productLimit = plan ? plan.productLimit : 0;
+    const remaining = Math.max(0, productLimit - currentProducts);
+
     return {
       success: true,
       message: 'Shop fetched successfully',
       data: {
-        shop,
+        shop: {
+          ...shop,
+          subscriptionUsage: {
+            planName: plan ? plan.name : 'None',
+            productLimit,
+            currentProducts,
+            remaining,
+            isLimitReached: currentProducts >= productLimit,
+          },
+        },
       },
     };
   }

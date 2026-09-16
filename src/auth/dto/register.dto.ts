@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn } from 'class-validator';
+﻿import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, IsIn, IsNumber } from 'class-validator';
 
 export class RegisterDto {
   @IsOptional()
@@ -22,6 +22,7 @@ export class RegisterDto {
   @IsIn(['customer', 'seller', 'admin'], { message: 'Role must be customer, seller, or admin' })
   role?: string;
 
+  // --- Seller Shop Profile Fields ---
   @IsOptional()
   @IsString()
   shopName?: string;
@@ -44,5 +45,58 @@ export class RegisterDto {
 
   @IsOptional()
   @IsString()
+  district?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
+
+  @IsOptional()
+  @IsString()
+  aadhaarNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  panNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  profileImage?: string;
+
+  @IsOptional()
+  @IsString()
+  subscriptionPlanId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  // --- Optional Seller Fields ---
+  @IsOptional()
+  @IsString()
+  gstNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  websiteUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  businessHours?: string;
+
+  @IsOptional()
+  @IsString()
+  businessDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  alternatePhone?: string;
 }

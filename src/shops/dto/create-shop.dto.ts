@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+﻿import { IsNotEmpty, IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class CreateShopDto {
   @IsString()
@@ -26,12 +26,54 @@ export class CreateShopDto {
   city: string;
 
   @IsString()
+  @IsOptional()
+  district?: string;
+
+  @IsString()
+  @IsOptional()
+  country?: string;
+
+  @IsString()
+  @IsOptional()
+  aadhaarNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  panNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  profileImage?: string;
+
+  @IsString()
   @IsNotEmpty()
   category: string;
 
   @IsOptional()
+  @IsNumber()
   latitude?: number;
 
   @IsOptional()
+  @IsNumber()
   longitude?: number;
+
+  @IsOptional()
+  @IsString()
+  gstNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  websiteUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  businessHours?: string;
+
+  @IsOptional()
+  @IsString()
+  businessDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  alternatePhone?: string;
 }

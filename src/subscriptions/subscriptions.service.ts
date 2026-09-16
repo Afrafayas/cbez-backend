@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
@@ -227,8 +227,10 @@ export class SubscriptionsService {
         verified: shop.verified,
         subscription: sub ? sub : null,
         usage: {
+          planName: sub ? sub.plan.name : 'None',
           currentProducts: activeProductCount,
           productLimit: sub ? sub.plan.productLimit : 0,
+          remaining: sub ? Math.max(0, sub.plan.productLimit - activeProductCount) : 0,
           canAddProduct: sub ? (sub.plan.status === 'ACTIVE' && activeProductCount < sub.plan.productLimit) : false,
         },
       },
@@ -256,7 +258,9 @@ export class SubscriptionsService {
 
     const currentCount = await this.prisma.product.count({ where: { shopId } });
     if (currentCount >= sub.plan.productLimit) {
-      throw new ForbiddenException(`Product limit reached! Your current plan (${sub.plan.name}) allows a maximum of ${sub.plan.productLimit} products. Please upgrade your subscription plan to list more devices.`);
+      throw new ForbiddenException(
+        'You have reached the maximum number of products allowed for your current subscription plan. Please upgrade or change your subscription plan to add more products.',
+      );
     }
 
     return {
