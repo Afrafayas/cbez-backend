@@ -146,8 +146,8 @@ model Brand {
 
 model ActivityLog {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?  @db.ObjectId
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   action    String
   details   String?
   ipAddress String?
