@@ -22,34 +22,22 @@ export class AuthService {
     }
 
     if (role === 'seller') {
-      const requiredFields: Array<{ field: keyof RegisterDto; message: string }> = [
-        { field: 'email', message: 'Email address is required for shop registration' },
-        { field: 'ownerName', message: 'Owner name is required for shop registration' },
-        { field: 'profileImage', message: 'Owner profile image is required for shop registration' },
-        { field: 'phone', message: 'Phone number is required for shop registration' },
-        { field: 'address', message: 'Physical business address is required for shop registration' },
-        { field: 'city', message: 'City is required for shop registration' },
-        { field: 'district', message: 'District is required for shop registration' },
-        { field: 'country', message: 'Country is required for shop registration' },
-        { field: 'aadhaarNumber', message: 'Aadhaar number is required for seller verification' },
-        { field: 'panNumber', message: 'PAN number is required for seller verification' },
-      ];
-
-      for (const { field, message } of requiredFields) {
-        const val = dto[field];
-        if (typeof val !== 'string' || !val.trim()) {
-          throw new BadRequestException(message);
-        }
+      const ownerName = dto.ownerName?.trim() || dto.name?.trim();
+      if (!ownerName) {
+        throw new BadRequestException('Name is required for seller registration');
       }
-
-      if (!dto.shopName && !dto.name) {
-        throw new BadRequestException('Shop business name is required for registration');
+      const shopName = dto.shopName?.trim() || dto.name?.trim();
+      if (!shopName) {
+        throw new BadRequestException('Shop name is required for seller registration');
       }
-      if (dto.latitude === undefined || dto.latitude === null || isNaN(Number(dto.latitude))) {
-        throw new BadRequestException('Shop location latitude is required. Please select your shop location on map.');
+      if (!dto.phone || !dto.phone.trim()) {
+        throw new BadRequestException('Phone number is required for seller registration');
       }
-      if (dto.longitude === undefined || dto.longitude === null || isNaN(Number(dto.longitude))) {
-        throw new BadRequestException('Shop location longitude is required. Please select your shop location on map.');
+      if (!dto.email || !dto.email.trim()) {
+        throw new BadRequestException('Email address is required for seller registration');
+      }
+      if (!dto.address || !dto.address.trim()) {
+        throw new BadRequestException('Shop address is required for seller registration');
       }
     } else {
       if (!dto.phone && !dto.email) {
@@ -80,26 +68,28 @@ export class AuthService {
 
     let shopCreateData: any = undefined;
     if (role === 'seller') {
+      const ownerName = dto.ownerName?.trim() || dto.name?.trim() || 'Owner';
+      const shopName = dto.shopName?.trim() || dto.name?.trim() || 'Shop';
       shopCreateData = {
-        name: dto.shopName || dto.name,
-        ownerName: dto.ownerName || dto.name,
-        phone: dto.phone || '',
-        whatsapp: dto.whatsapp || dto.phone || '',
-        address: dto.address,
-        city: dto.city,
-        district: dto.district || 'Ernakulam',
-        country: dto.country || 'India',
-        aadhaarNumber: dto.aadhaarNumber,
-        panNumber: dto.panNumber,
-        profileImage: dto.profileImage,
-        category: dto.category || 'Mobiles & Tablets',
-        latitude: Number(dto.latitude),
-        longitude: Number(dto.longitude),
-        gstNumber: dto.gstNumber || null,
-        websiteUrl: dto.websiteUrl || null,
-        businessHours: dto.businessHours || null,
-        businessDescription: dto.businessDescription || null,
-        alternatePhone: dto.alternatePhone || null,
+        name: shopName,
+        ownerName: ownerName,
+        phone: dto.phone?.trim() || '',
+        whatsapp: dto.whatsapp?.trim() || dto.phone?.trim() || '',
+        address: dto.address?.trim() || '',
+        city: dto.city?.trim() || 'Ernakulam',
+        district: dto.district?.trim() || 'Ernakulam',
+        country: dto.country?.trim() || 'India',
+        aadhaarNumber: dto.aadhaarNumber?.trim() || null,
+        panNumber: dto.panNumber?.trim() || null,
+        profileImage: dto.profileImage?.trim() || null,
+        category: dto.category?.trim() || 'Mobiles & Tablets',
+        latitude: dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null,
+        longitude: dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude)) ? Number(dto.longitude) : null,
+        gstNumber: dto.gstNumber?.trim() || null,
+        websiteUrl: dto.websiteUrl?.trim() || null,
+        businessHours: dto.businessHours?.trim() || null,
+        businessDescription: dto.businessDescription?.trim() || null,
+        alternatePhone: dto.alternatePhone?.trim() || null,
       };
     }
 
