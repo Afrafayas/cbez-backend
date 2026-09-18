@@ -237,6 +237,18 @@ export class SubscriptionsService {
     };
   }
 
+  async getMySubscription(userId: string) {
+    const shop = await this.prisma.shop.findUnique({ where: { ownerId: userId } });
+    if (!shop) {
+      return {
+        success: true,
+        message: 'No shop found for user',
+        data: null,
+      };
+    }
+    return this.getShopSubscription(shop.id);
+  }
+
   async checkProductLimit(shopId: string) {
     const shop = await this.prisma.shop.findUnique({ where: { id: shopId } });
     if (!shop) {

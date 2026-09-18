@@ -1,4 +1,4 @@
-﻿import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { SubscriptionsService } from './subscriptions.service';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
@@ -56,6 +56,12 @@ export class SubscriptionsController {
   @UseGuards(AuthGuard('jwt'), AdminGuard)
   assignPlanToShop(@Body() dto: AssignSubscriptionDto) {
     return this.subscriptionsService.assignPlanToShop(dto);
+  }
+
+  @Get('mine')
+  @UseGuards(AuthGuard('jwt'))
+  getMySubscription(@Request() req: any) {
+    return this.subscriptionsService.getMySubscription(req.user.id);
   }
 
   @Get('shop/:shopId')
