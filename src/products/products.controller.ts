@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -46,7 +47,6 @@ export class ProductsController {
     return this.productsService.findByShop(shopId);
   }
 
-
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
@@ -56,6 +56,12 @@ export class ProductsController {
   @Post()
   async create(@Request() req: any, @Body() dto: CreateProductDto) {
     return this.productsService.create(req.user.id, dto);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Put(':id')
+  async update(@Request() req: any, @Param('id') id: string, @Body() dto: UpdateProductDto) {
+    return this.productsService.update(id, req.user.id, dto);
   }
 
   @UseGuards(AuthGuard('jwt'))
