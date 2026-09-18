@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { formatUserModel } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class AuthService {
@@ -100,10 +101,17 @@ export class AuthService {
         name: dto.name || dto.ownerName || dto.shopName || 'User',
         phone: dto.phone || null,
         role: role,
+        latitude: dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null,
+        longitude: dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude)) ? Number(dto.longitude) : null,
         ...(shopCreateData ? { shop: { create: shopCreateData } } : {}),
       },
       include: {
-        shop: true,
+        shop: {
+          include: {
+            subscription: { include: { plan: true } },
+            _count: { select: { products: true } },
+          },
+        },
       },
     });
 
@@ -138,15 +146,15 @@ export class AuthService {
       userAgent,
     );
 
-    const { password, ...userWithoutPassword } = user;
+    const formattedUser = formatUserModel(user);
     return {
       success: true,
       message: 'User registered successfully',
       data: {
-        user: userWithoutPassword,
+        user: formattedUser,
         token,
       },
-      user: userWithoutPassword,
+      user: formattedUser,
       token,
     };
   }
@@ -156,16 +164,23 @@ export class AuthService {
       throw new BadRequestException('Please provide email or phone number to login');
     }
 
+    const shopInclude = {
+      include: {
+        subscription: { include: { plan: true } },
+        _count: { select: { products: true } },
+      },
+    };
+
     let user: any = null;
     if (dto.email) {
       user = await this.prisma.user.findFirst({
         where: { email: dto.email.toLowerCase() },
-        include: { shop: { include: { subscription: { include: { plan: true } } } } },
+        include: { shop: shopInclude },
       });
     } else if (dto.phone) {
       user = await this.prisma.user.findUnique({
         where: { phone: dto.phone },
-        include: { shop: { include: { subscription: { include: { plan: true } } } } },
+        include: { shop: shopInclude },
       });
     }
 
@@ -188,15 +203,15 @@ export class AuthService {
       userAgent,
     );
 
-    const { password, ...userWithoutPassword } = user;
+    const formattedUser = formatUserModel(user);
     return {
       success: true,
       message: 'Logged in successfully',
       data: {
-        user: userWithoutPassword,
+        user: formattedUser,
         token,
       },
-      user: userWithoutPassword,
+      user: formattedUser,
       token,
     };
   }
@@ -204,16 +219,23 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { shop: { include: { subscription: { include: { plan: true } } } } },
+      include: {
+        shop: {
+          include: {
+            subscription: { include: { plan: true } },
+            _count: { select: { products: true } },
+          },
+        },
+      },
     });
     if (!user) {
       throw new NotFoundException('User profile not found');
     }
-    const { password, ...userWithoutPassword } = user;
+    const formattedUser = formatUserModel(user);
     return {
       success: true,
-      data: userWithoutPassword,
-      user: userWithoutPassword,
+      data: formattedUser,
+      user: formattedUser,
     };
   }
 

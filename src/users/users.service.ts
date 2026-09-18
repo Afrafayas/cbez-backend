@@ -1,10 +1,20 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { formatUserModel } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
+
+  private readonly userInclude = {
+    shop: {
+      include: {
+        subscription: { include: { plan: true } },
+        _count: { select: { products: true } },
+      },
+    },
+  };
 
   async findAll(query?: { role?: string; search?: string }) {
     const where: any = {};
@@ -25,31 +35,14 @@ export class UsersService {
     const users = await this.prisma.user.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        shop: {
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            category: true,
-            verified: true,
-          },
-        },
-      },
+      include: this.userInclude,
     });
 
     return {
       success: true,
       message: 'Users fetched successfully',
       data: {
-        users,
+        users: users.map((u) => formatUserModel(u)),
       },
     };
   }
@@ -57,29 +50,7 @@ export class UsersService {
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        shop: {
-          select: {
-            id: true,
-            name: true,
-            ownerName: true,
-            phone: true,
-            whatsapp: true,
-            address: true,
-            city: true,
-            category: true,
-            verified: true,
-            rating: true,
-          },
-        },
-      },
+      include: this.userInclude,
     });
 
     if (!user) {
@@ -90,7 +61,7 @@ export class UsersService {
       success: true,
       message: 'User fetched successfully',
       data: {
-        user,
+        user: formatUserModel(user),
       },
     };
   }
@@ -115,39 +86,31 @@ export class UsersService {
       }
     }
 
+    const updateData: any = {
+      ...(dto.name && { name: dto.name }),
+      ...(dto.email !== undefined && { email: dto.email }),
+      ...(dto.phone !== undefined && { phone: dto.phone }),
+      ...(dto.role && { role: dto.role }),
+    };
+
+    if (dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude))) {
+      updateData.latitude = Number(dto.latitude);
+    }
+    if (dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude))) {
+      updateData.longitude = Number(dto.longitude);
+    }
+
     const user = await this.prisma.user.update({
       where: { id },
-      data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.email !== undefined && { email: dto.email }),
-        ...(dto.phone !== undefined && { phone: dto.phone }),
-        ...(dto.role && { role: dto.role }),
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        shop: {
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            category: true,
-            verified: true,
-          },
-        },
-      },
+      data: updateData,
+      include: this.userInclude,
     });
 
     return {
       success: true,
       message: 'User updated successfully',
       data: {
-        user,
+        user: formatUserModel(user),
       },
     };
   }

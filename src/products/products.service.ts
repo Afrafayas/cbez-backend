@@ -4,6 +4,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { formatShopModel } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class ProductsService {
@@ -12,6 +13,24 @@ export class ProductsService {
     private activityLogsService: ActivityLogsService,
     private subscriptionsService: SubscriptionsService,
   ) { }
+
+  private readonly productShopInclude = {
+    include: {
+      subscription: { include: { plan: true } },
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          latitude: true,
+          longitude: true,
+        },
+      },
+      _count: { select: { products: true } },
+    },
+  };
 
   async create(sellerUserId: string, dto: CreateProductDto) {
     const shop = await this.prisma.shop.findUnique({
@@ -92,7 +111,7 @@ export class ProductsService {
         shopId: shop.id,
       },
       include: {
-        shop: true,
+        shop: this.productShopInclude,
       },
     });
 
@@ -129,7 +148,7 @@ export class ProductsService {
     const products = await this.prisma.product.findMany({
       where: { shopId: shop.id },
       orderBy: { createdAt: 'desc' },
-      include: { shop: true },
+      include: { shop: this.productShopInclude },
     });
 
     return {
@@ -227,7 +246,7 @@ export class ProductsService {
       where,
       orderBy,
       include: {
-        shop: true,
+        shop: this.productShopInclude,
       },
     });
 
@@ -326,7 +345,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { shop: true },
+      include: { shop: this.productShopInclude },
     });
 
     if (!product) {
@@ -351,7 +370,7 @@ export class ProductsService {
         },
       },
       orderBy: { createdAt: 'desc' },
-      include: { shop: true },
+      include: { shop: this.productShopInclude },
     });
 
     return {
@@ -372,7 +391,7 @@ export class ProductsService {
         },
       },
       orderBy: { createdAt: 'desc' },
-      include: { shop: true },
+      include: { shop: this.productShopInclude },
     });
 
     return {
@@ -388,7 +407,7 @@ export class ProductsService {
     const products = await this.prisma.product.findMany({
       where: { shopId },
       orderBy: { createdAt: 'desc' },
-      include: { shop: true },
+      include: { shop: this.productShopInclude },
     });
 
     return {
@@ -404,7 +423,7 @@ export class ProductsService {
   async update(id: string, sellerUserId: string, dto: UpdateProductDto) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { shop: true },
+      include: { shop: this.productShopInclude },
     });
 
     if (!product) {
@@ -437,7 +456,7 @@ export class ProductsService {
     const updated = await this.prisma.product.update({
       where: { id },
       data: updateData,
-      include: { shop: true },
+      include: { shop: this.productShopInclude },
     });
 
     await this.activityLogsService.log(
@@ -458,7 +477,7 @@ export class ProductsService {
   async remove(id: string, sellerUserId: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { shop: true },
+      include: { shop: this.productShopInclude },
     });
 
     if (!product) {
@@ -505,6 +524,8 @@ export class ProductsService {
       images = [];
     }
 
+    const formattedShop = p.shop ? formatShopModel(p.shop) : null;
+
     return {
       id: p.id,
       name: p.name,
@@ -514,10 +535,13 @@ export class ProductsService {
       price: p.price,
       stock: p.stock,
       shopId: p.shopId,
-      shop: p.shop,
+      shop: formattedShop,
       specs,
       conditionInfo,
       images,
+      specsJson: p.specsJson,
+      conditionJson: p.conditionJson,
+      imagesJson: p.imagesJson,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     };
