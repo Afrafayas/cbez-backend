@@ -1,8 +1,9 @@
-﻿import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 @Injectable()
 export class ProductsService {
@@ -399,6 +400,60 @@ export class ProductsService {
     };
   }
 
+
+  async update(id: string, sellerUserId: string, dto: UpdateProductDto) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { shop: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (product.shop.ownerId !== sellerUserId) {
+      throw new ForbiddenException('You can only edit products from your own shop');
+    }
+
+    const updateData: any = {};
+    if (dto.shopId !== undefined) updateData.shopId = dto.shopId;
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.brand !== undefined) updateData.brand = dto.brand;
+    if (dto.category !== undefined) updateData.category = dto.category;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.price !== undefined) updateData.price = Number(dto.price);
+    if (dto.stock !== undefined) updateData.stock = Number(dto.stock);
+
+    if (dto.specs !== undefined) {
+      updateData.specsJson = JSON.stringify(dto.specs);
+    }
+    if (dto.conditionInfo !== undefined) {
+      updateData.conditionJson = JSON.stringify(dto.conditionInfo);
+    }
+    if (dto.images !== undefined) {
+      updateData.imagesJson = JSON.stringify(dto.images);
+    }
+
+    const updated = await this.prisma.product.update({
+      where: { id },
+      data: updateData,
+      include: { shop: true },
+    });
+
+    await this.activityLogsService.log(
+      sellerUserId,
+      'UPDATE_PRODUCT',
+      'Updated product ' + updated.name,
+    );
+
+    return {
+      success: true,
+      message: 'Product updated successfully',
+      data: {
+        product: this.formatProduct(updated),
+      },
+    };
+  }
 
   async remove(id: string, sellerUserId: string) {
     const product = await this.prisma.product.findUnique({

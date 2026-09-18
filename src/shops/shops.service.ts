@@ -267,12 +267,12 @@ export class ShopsService {
   async update(id: string, dto: any) {
     const existing = await this.prisma.shop.findUnique({ where: { id } });
     if (!existing) {
-      throw new NotFoundException(`Shop with ID ${id} not found`);
+      throw new NotFoundException('Shop not found');
     }
-
     const shop = await this.prisma.shop.update({
       where: { id },
       data: dto,
+      include: { subscription: { include: { plan: true } } },
     });
 
     return {
