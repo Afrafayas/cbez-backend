@@ -9,13 +9,25 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(@Body() dto: RegisterDto, @Request() req: any) {
+    const ipAddress =
+      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket?.remoteAddress ||
+      req.ip ||
+      null;
+    const userAgent = (req.headers?.['user-agent'] as string) || null;
+    return this.authService.register(dto, ipAddress, userAgent);
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Request() req: any) {
+    const ipAddress =
+      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket?.remoteAddress ||
+      req.ip ||
+      null;
+    const userAgent = (req.headers?.['user-agent'] as string) || null;
+    return this.authService.login(dto, ipAddress, userAgent);
   }
 
   @UseGuards(AuthGuard('jwt'))

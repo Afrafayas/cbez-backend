@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class WishlistService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private activityLogsService: ActivityLogsService,
+  ) {}
 
   private formatProduct(p: any) {
     if (!p) return null;
@@ -56,6 +60,7 @@ export class WishlistService {
   async toggleWishlist(userId: string, productId: string) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
+      include: { shop: true },
     });
 
     if (!product) {
@@ -75,6 +80,12 @@ export class WishlistService {
       await this.prisma.wishlist.delete({
         where: { id: existing.id },
       });
+
+      await this.activityLogsService.log(
+        userId,
+        'WISHLIST_REMOVE',
+        `Removed product "${product.name}" (ID: ${product.id}) from wishlist`,
+      );
 
       return {
         success: true,
@@ -96,6 +107,13 @@ export class WishlistService {
         },
       });
 
+      const shopName = product.shop?.name || wishlist.product?.shop?.name || 'Shop';
+      await this.activityLogsService.log(
+        userId,
+        'WISHLIST',
+        `Added product "${product.name}" (ID: ${product.id}, Price: ₹${product.price}) to wishlist (Shop: "${shopName}")`,
+      );
+
       return {
         success: true,
         isWishlisted: true,
@@ -113,6 +131,7 @@ export class WishlistService {
   async addToWishlist(userId: string, productId: string) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
+      include: { shop: true },
     });
 
     if (!product) {
@@ -151,6 +170,13 @@ export class WishlistService {
       },
     });
 
+    const shopName = product.shop?.name || wishlist.product?.shop?.name || 'Shop';
+    await this.activityLogsService.log(
+      userId,
+      'WISHLIST',
+      `Added product "${product.name}" (ID: ${product.id}, Price: ₹${product.price}) to wishlist (Shop: "${shopName}")`,
+    );
+
     return {
       success: true,
       isWishlisted: true,
@@ -185,6 +211,17 @@ export class WishlistService {
     await this.prisma.wishlist.delete({
       where: { id: existing.id },
     });
+
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
+    const productName = product?.name || productId;
+
+    await this.activityLogsService.log(
+      userId,
+      'WISHLIST_REMOVE',
+      `Removed product "${productName}" (ID: ${productId}) from wishlist`,
+    );
 
     return {
       success: true,

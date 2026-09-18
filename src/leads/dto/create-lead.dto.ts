@@ -24,4 +24,8 @@ export class CreateLeadDto {
   @IsString()
   @IsIn(['call', 'whatsapp'])
   contactType: string;
+
+  @IsString()
+  @IsOptional()
+  userId?: string;
 }

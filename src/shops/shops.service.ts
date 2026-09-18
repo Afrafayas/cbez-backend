@@ -21,6 +21,9 @@ export class ShopsService {
       const shop = await this.prisma.shop.update({
         where: { ownerId },
         data: dto,
+        include: {
+          subscription: { include: { plan: true } },
+        },
       });
       await this.activityLogsService.log(ownerId, 'UPDATE_SHOP', `Updated shop profile "${shop.name}"`);
       return {
@@ -34,6 +37,9 @@ export class ShopsService {
       data: {
         ...dto,
         ownerId,
+      },
+      include: {
+        subscription: { include: { plan: true } },
       },
     });
     await this.activityLogsService.log(ownerId, 'CREATE_SHOP', `Created shop profile "${shop.name}" (Pending Verification)`);

@@ -14,7 +14,7 @@ export class AuthService {
     private activityLogsService: ActivityLogsService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, ipAddress?: string | null, userAgent?: string | null) {
     const role = dto.role || 'customer';
 
     if (!dto.password) {
@@ -120,7 +120,7 @@ export class AuthService {
     // Assign chosen subscription plan to shop
     if (user.shop && dto.subscriptionPlanId) {
       try {
-        await this.prisma.shopSubscription.upsert({
+        const sub = await this.prisma.shopSubscription.upsert({
           where: { shopId: user.shop.id },
           create: {
             shopId: user.shop.id,
@@ -129,7 +129,9 @@ export class AuthService {
           update: {
             planId: dto.subscriptionPlanId,
           },
+          include: { plan: true },
         });
+        (user.shop as any).subscription = sub;
       } catch (err) {
         console.warn('Subscription assignment during registration fallback:', err);
       }
@@ -141,7 +143,9 @@ export class AuthService {
     await this.activityLogsService.log(
       user.id,
       'REGISTER',
-      `Registered new ${user.role} account (${user.name})`,
+      `Registered new ${user.role} account (${user.name}) - Email: ${user.email || 'N/A'}, Phone: ${user.phone || 'N/A'}`,
+      ipAddress,
+      userAgent,
     );
 
     const { password, ...userWithoutPassword } = user;
@@ -157,7 +161,7 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ipAddress?: string | null, userAgent?: string | null) {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Please provide email or phone number to login');
     }
@@ -166,12 +170,12 @@ export class AuthService {
     if (dto.email) {
       user = await this.prisma.user.findFirst({
         where: { email: dto.email.toLowerCase() },
-        include: { shop: true },
+        include: { shop: { include: { subscription: { include: { plan: true } } } } },
       });
     } else if (dto.phone) {
       user = await this.prisma.user.findUnique({
         where: { phone: dto.phone },
-        include: { shop: true },
+        include: { shop: { include: { subscription: { include: { plan: true } } } } },
       });
     }
 
@@ -189,7 +193,9 @@ export class AuthService {
     await this.activityLogsService.log(
       user.id,
       'LOGIN',
-      `Logged in ${user.role} account (${user.name})`,
+      `Logged in ${user.role} account (${user.name}) - Email: ${user.email || 'N/A'}, Phone: ${user.phone || 'N/A'}`,
+      ipAddress,
+      userAgent,
     );
 
     const { password, ...userWithoutPassword } = user;
@@ -208,7 +214,7 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { shop: true },
+      include: { shop: { include: { subscription: { include: { plan: true } } } } },
     });
     if (!user) {
       throw new NotFoundException('User profile not found');

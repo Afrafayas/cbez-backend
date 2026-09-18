@@ -1,1020 +1,2565 @@
 {
-	"info": {
-		"_postman_id": "cbez-b2c-api-collection-v2",
-		"name": "Cbez API Collection",
-		"description": "Complete API Postman collection for the Cbez B2C Backend platform. Updated with standardized API response messages ({ success, message, data }) for ID fetches, plus dedicated endpoints for Products by Category and Products by Brand.",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "Health Check",
-			"item": [
-				{
-					"name": "Get API Status",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								""
-							]
-						},
-						"description": "Returns welcome/health check message from the backend API."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Auth",
-			"item": [
-				{
-					"name": "Register Customer",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200 || pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    if (jsonData.token) {",
-									"        pm.collectionVariables.set('auth_token', jsonData.token);",
-									"        console.log('auth_token set successfully');",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"John Customer\",\n  \"phone\": \"+919876543210\",\n  \"role\": \"customer\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/auth/register",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"auth",
-								"register"
-							]
-						},
-						"description": "Register a new customer account."
-					},
-					"response": []
-				},
-				{
-					"name": "Register Seller",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200 || pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    if (jsonData.token) {",
-									"        pm.collectionVariables.set('auth_token', jsonData.token);",
-									"        console.log('auth_token set successfully');",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"seller@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"Alex Commerce\",\n  \"phone\": \"+919876543211\",\n  \"role\": \"seller\",\n  \"shopName\": \"Tech Zone Electronics\",\n  \"ownerName\": \"Alex Commerce\",\n  \"whatsapp\": \"+919876543211\",\n  \"address\": \"123 MG Road, Marine Drive\",\n  \"city\": \"Kochi\",\n  \"category\": \"Mobiles & Tablets\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/auth/register",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"auth",
-								"register"
-							]
-						},
-						"description": "Register a new seller account along with their store creation."
-					},
-					"response": []
-				},
-				{
-					"name": "Login User",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 200 || pm.response.code === 201) {",
-									"    var jsonData = pm.response.json();",
-									"    if (jsonData.token) {",
-									"        pm.collectionVariables.set('auth_token', jsonData.token);",
-									"        console.log('auth_token set successfully');",
-									"    }",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"seller@example.com\",\n  \"password\": \"Password123!\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/auth/login",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"auth",
-								"login"
-							]
-						},
-						"description": "Authenticate user with email/phone and password, returning JWT bearer token."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Profile",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/auth/me",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"auth",
-								"me"
-							]
-						},
-						"description": "Fetch details of currently logged-in user profile."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Brands",
-			"item": [
-				{
-					"name": "Get All Brands",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/brands",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"brands"
-							]
-						},
-						"description": "Fetch list of all brands."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Brand By ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/brands/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"brands",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "brand_id_here",
-									"description": "ID of the brand"
-								}
-							]
-						},
-						"description": "Fetch single brand by ID. Returns standardized { success: true, message: 'Brand fetched successfully', data: { brand } } response."
-					},
-					"response": []
-				},
-				{
-					"name": "Create Brand",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Apple\",\n  \"logo\": \"https://example.com/logos/apple.png\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/brands",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"brands"
-							]
-						},
-						"description": "Create a new brand (requires authentication)."
-					},
-					"response": []
-				},
-				{
-					"name": "Update Brand",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Apple Inc.\",\n  \"logo\": \"https://example.com/logos/apple-updated.png\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/brands/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"brands",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "brand_id_here",
-									"description": "ID of the brand to update"
-								}
-							]
-						},
-						"description": "Update an existing brand by ID (requires authentication)."
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Brand",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/brands/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"brands",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "brand_id_here",
-									"description": "ID of the brand to delete"
-								}
-							]
-						},
-						"description": "Delete a brand by ID (requires authentication)."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Categories",
-			"item": [
-				{
-					"name": "Get All Categories",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/categories",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"categories"
-							]
-						},
-						"description": "Fetch list of all categories."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Category By ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/categories/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"categories",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "category_id_here",
-									"description": "ID of the category"
-								}
-							]
-						},
-						"description": "Fetch single category by ID. Returns standardized { success: true, message: 'Category fetched successfully', data: { category } } response."
-					},
-					"response": []
-				},
-				{
-					"name": "Create Category",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Mobiles & Tablets\",\n  \"slug\": \"mobiles-tablets\",\n  \"image\": \"https://example.com/categories/mobiles.png\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/categories",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"categories"
-							]
-						},
-						"description": "Create a new product category (requires authentication)."
-					},
-					"response": []
-				},
-				{
-					"name": "Update Category",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Smartphones & Gadgets\",\n  \"slug\": \"smartphones-gadgets\",\n  \"image\": \"https://example.com/categories/smartphones.png\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/categories/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"categories",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "category_id_here",
-									"description": "ID of the category to update"
-								}
-							]
-						},
-						"description": "Update an existing category by ID (requires authentication)."
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Category",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/categories/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"categories",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "category_id_here",
-									"description": "ID of the category to delete"
-								}
-							]
-						},
-						"description": "Delete a category by ID (requires authentication)."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Products",
-			"item": [
-				{
-					"name": "Get All Products",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/products?search=&category=&brand=&minPrice=&maxPrice=&city=&sortBy=&shopId=",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"products"
-							],
-							"query": [
-								{
-									"key": "search",
-									"value": "",
-									"description": "Search term for product name or description"
-								},
-								{
-									"key": "category",
-									"value": "",
-									"description": "Filter by category name or slug"
-								},
-								{
-									"key": "brand",
-									"value": "",
-									"description": "Filter by brand name"
-								},
-								{
-									"key": "minPrice",
-									"value": "",
-									"description": "Minimum price filter"
-								},
-								{
-									"key": "maxPrice",
-									"value": "",
-									"description": "Maximum price filter"
-								},
-								{
-									"key": "city",
-									"value": "",
-									"description": "Filter by shop city location"
-								},
-								{
-									"key": "sortBy",
-									"value": "",
-									"description": "Sort order (e.g. price_asc, price_desc, newest)"
-								},
-								{
-									"key": "shopId",
-									"value": "",
-									"description": "Filter products by specific seller shop ID"
-								}
-							]
-						},
-						"description": "Fetch all products with optional filters for search, category, brand, price range, city, sorting, and shop."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Products By Category",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/products/category/:category",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"products",
-								"category",
-								":category"
-							],
-							"variable": [
-								{
-									"key": "category",
-									"value": "Mobiles",
-									"description": "Category name or query term"
-								}
-							]
-						},
-						"description": "Fetch products belonging to a specific category. Returns { success: true, message: 'Products for category ... fetched successfully', data: { products: [...] } }."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Products By Brand",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/products/brand/:brand",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"products",
-								"brand",
-								":brand"
-							],
-							"variable": [
-								{
-									"key": "brand",
-									"value": "Apple",
-									"description": "Brand name to filter by"
-								}
-							]
-						},
-						"description": "Fetch products belonging to a specific brand. Returns { success: true, message: 'Products for brand ... fetched successfully', data: { products: [...] } }."
-					},
-					"response": []
-				},
-				{
-					"name": "Get My Products (Seller)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/products/mine",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"products",
-								"mine"
-							]
-						},
-						"description": "Fetch all products belonging to the logged-in seller's shop."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Product By ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/products/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"products",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "product_id_here",
-									"description": "ID of the product"
-								}
-							]
-						},
-						"description": "Fetch single product details by ID. Returns standardized { success: true, message: 'Product fetched successfully', data: { product } } response."
-					},
-					"response": []
-				},
-				{
-					"name": "Create Product (Seller)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"iPhone 15 Pro 128GB\",\n  \"brand\": \"Apple\",\n  \"category\": \"Mobiles & Tablets\",\n  \"description\": \"Brand new Apple iPhone 15 Pro with Titanium build.\",\n  \"price\": 129990,\n  \"stock\": 5,\n  \"specs\": {\n    \"color\": \"Natural Titanium\",\n    \"storage\": \"128GB\",\n    \"ram\": \"8GB\"\n  },\n  \"images\": [\n    \"https://example.com/products/iphone15pro-1.jpg\",\n    \"https://example.com/products/iphone15pro-2.jpg\"\n  ]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/products",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"products"
-							]
-						},
-						"description": "Create a new product under the authenticated seller's store."
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Product (Seller)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/products/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"products",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "product_id_here",
-									"description": "ID of product to delete"
-								}
-							]
-						},
-						"description": "Delete a product by ID owned by the logged-in seller."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Shops",
-			"item": [
-				{
-					"name": "Get All Shops",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/shops?city=&category=&search=",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"shops"
-							],
-							"query": [
-								{
-									"key": "city",
-									"value": "",
-									"description": "Filter shops by city"
-								},
-								{
-									"key": "category",
-									"value": "",
-									"description": "Filter shops by main category"
-								},
-								{
-									"key": "search",
-									"value": "",
-									"description": "Search shop by name or description"
-								}
-							]
-						},
-						"description": "Fetch all registered shops with optional filters for city, category, and search query."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Shop By ID",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/shops/:id",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"shops",
-								":id"
-							],
-							"variable": [
-								{
-									"key": "id",
-									"value": "shop_id_here",
-									"description": "ID of the shop"
-								}
-							]
-						},
-						"description": "Fetch single shop profile and details by ID. Returns standardized { success: true, message: 'Shop fetched successfully', data: { shop } } response."
-					},
-					"response": []
-				},
-				{
-					"name": "Create or Update My Shop (Seller)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Tech Zone Store\",\n  \"ownerName\": \"Alex Commerce\",\n  \"phone\": \"+919876543211\",\n  \"whatsapp\": \"+919876543211\",\n  \"address\": \"Shop 42, Electronics Hub, Marine Drive\",\n  \"city\": \"Kochi\",\n  \"category\": \"Mobiles & Tablets\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/shops/mine",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"shops",
-								"mine"
-							]
-						},
-						"description": "Create or update store details for the authenticated seller."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Leads",
-			"item": [
-				{
-					"name": "Create Lead (Contact Seller)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"shopId\": \"shop_id_here\",\n  \"productId\": \"product_id_here\",\n  \"productName\": \"iPhone 15 Pro 128GB\",\n  \"customerName\": \"John Customer\",\n  \"customerPhone\": \"+919876543210\",\n  \"contactType\": \"whatsapp\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/leads",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"leads"
-							]
-						},
-						"description": "Submit a new customer inquiry/lead to a seller (contactType can be 'call' or 'whatsapp')."
-					},
-					"response": []
-				},
-				{
-					"name": "Get Seller Leads (Seller)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{auth_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/leads/seller",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"leads",
-								"seller"
-							]
-						},
-						"description": "Fetch all customer leads submitted for the authenticated seller's shop."
-					},
-					"response": []
-				}
-			]
-		}
-	],
-	"variable": [
-		{
-			"key": "baseUrl",
-			"value": "http://localhost:3000/api",
-			"type": "string"
-		},
-		{
-			"key": "auth_token",
-			"value": "",
-			"type": "string"
-		}
-	]
+  "info": {
+    "_postman_id": "cbez-b2c-api-collection-v3",
+    "name": "Cbez API Collection",
+    "description": "Complete, production-ready Postman collection for Cbez B2C Backend platform. Updated with full endpoint coverage across 14 modules: Auth, Users, Shops, Products, Categories, Brands, Subscriptions (including GET /subscriptions/mine), Leads, Follows, Location, Network, Wishlist, Activity Logs (including POST /activity-logs and GET /activity-logs/seller/customers with VIP/Free role masking), and Health Check.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Get API Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            },
+            "description": "Returns welcome/health check message from the backend API."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "        console.log('auth_token set successfully');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"John Customer\",\n  \"phone\": \"+919876543210\",\n  \"role\": \"customer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new customer account."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Seller",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "        console.log('auth_token set successfully');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seller@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"Alex Commerce\",\n  \"phone\": \"+919876543211\",\n  \"role\": \"seller\",\n  \"shopName\": \"Tech Zone Electronics\",\n  \"ownerName\": \"Alex Commerce\",\n  \"whatsapp\": \"+919876543211\",\n  \"address\": \"123 MG Road, Marine Drive\",\n  \"city\": \"Kochi\",\n  \"district\": \"Ernakulam\",\n  \"country\": \"India\",\n  \"category\": \"Mobiles & Tablets\",\n  \"aadhaarNumber\": \"123456789012\",\n  \"panNumber\": \"ABCDE1234F\",\n  \"profileImage\": \"https://example.com/profiles/seller.jpg\",\n  \"subscriptionPlanId\": \"plan_id_here\",\n  \"latitude\": 9.9312,\n  \"longitude\": 76.2673,\n  \"gstNumber\": \"32ABCDE1234F1Z5\",\n  \"websiteUrl\": \"https://techzone.com\",\n  \"businessHours\": \"Mon-Sat: 9 AM - 8 PM\",\n  \"businessDescription\": \"Leading mobile & electronics store in Kochi.\",\n  \"alternatePhone\": \"+919876543212\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new seller account along with their store creation."
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "        console.log('auth_token set successfully');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seller@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticate user with email/phone and password, returning JWT bearer token."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Fetch details of currently logged-in user profile."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?role=&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "",
+                  "description": "Filter by user role (customer, seller, admin)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search user by name, email, or phone"
+                }
+              ]
+            },
+            "description": "Fetch list of all registered users with optional role and search filters."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "user_id_here",
+                  "description": "ID of the user"
+                }
+              ]
+            },
+            "description": "Fetch details of a specific user by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Customer Updated\",\n  \"email\": \"customer.updated@example.com\",\n  \"phone\": \"+919876543299\",\n  \"role\": \"customer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "user_id_here",
+                  "description": "ID of the user to update"
+                }
+              ]
+            },
+            "description": "Update user details by ID (requires JWT authentication)."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "user_id_here",
+                  "description": "ID of the user to delete"
+                }
+              ]
+            },
+            "description": "Delete a user by ID (requires JWT authentication)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Shops",
+      "item": [
+        {
+          "name": "Get All Shops",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shops?city=&category=&search=&status=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "",
+                  "description": "Filter shops by city"
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": "Filter shops by main category"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search shop by name, owner, or city"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter shops by verification status (verified, pending)"
+                }
+              ]
+            },
+            "description": "Fetch all registered shops with optional filters for city, category, search, and status."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shop Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shops/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                "stats"
+              ]
+            },
+            "description": "Fetch shop count statistics breakdown (total, verified, pending)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending Shops",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shops/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                "pending"
+              ]
+            },
+            "description": "Fetch list of shops pending verification approval."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Verified Shops",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shops/verified",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                "verified"
+              ]
+            },
+            "description": "Fetch list of verified shops."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shop By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shops/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop"
+                }
+              ]
+            },
+            "description": "Fetch single shop profile and details by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shop Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shops/:id/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                ":id",
+                "products"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop"
+                }
+              ]
+            },
+            "description": "Fetch all active products listed under a specific shop."
+          },
+          "response": []
+        },
+        {
+          "name": "Create or Update My Shop (Seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech Zone Store\",\n  \"ownerName\": \"Alex Commerce\",\n  \"phone\": \"+919876543211\",\n  \"whatsapp\": \"+919876543211\",\n  \"address\": \"Shop 42, Electronics Hub, Marine Drive\",\n  \"city\": \"Kochi\",\n  \"district\": \"Ernakulam\",\n  \"country\": \"India\",\n  \"category\": \"Mobiles & Tablets\",\n  \"aadhaarNumber\": \"123456789012\",\n  \"panNumber\": \"ABCDE1234F\",\n  \"profileImage\": \"https://example.com/profiles/shop.jpg\",\n  \"latitude\": 9.9312,\n  \"longitude\": 76.2673,\n  \"gstNumber\": \"32ABCDE1234F1Z5\",\n  \"websiteUrl\": \"https://techzone.com\",\n  \"businessHours\": \"Mon-Sat: 9 AM - 8 PM\",\n  \"businessDescription\": \"Leading mobile & electronics store in Kochi.\",\n  \"alternatePhone\": \"+919876543212\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shops/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                "mine"
+              ]
+            },
+            "description": "Create or update store details for the authenticated seller."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Shop By ID",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech Zone Premium Hub\",\n  \"ownerName\": \"Alex Commerce\",\n  \"phone\": \"+919876543211\",\n  \"whatsapp\": \"+919876543211\",\n  \"address\": \"Shop 42-45, Marine Drive\",\n  \"city\": \"Kochi\",\n  \"category\": \"Mobiles & Tablets\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shops/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop to update"
+                }
+              ]
+            },
+            "description": "Update an existing shop profile by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Shop Verification",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verified\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shops/:id/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                ":id",
+                "verify"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop to verify"
+                }
+              ]
+            },
+            "description": "Approve or revoke verification status for a seller shop."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Shop By ID",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shops/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shops",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop to delete"
+                }
+              ]
+            },
+            "description": "Delete a shop by ID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products?search=&category=&brand=&minPrice=&maxPrice=&city=&sortBy=&shopId=&lat=&lng=&radiusKm=&condition=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search term for product name or description"
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": "Filter by category name or slug"
+                },
+                {
+                  "key": "brand",
+                  "value": "",
+                  "description": "Filter by brand name"
+                },
+                {
+                  "key": "minPrice",
+                  "value": "",
+                  "description": "Minimum price filter"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "",
+                  "description": "Maximum price filter"
+                },
+                {
+                  "key": "city",
+                  "value": "",
+                  "description": "Filter by shop city location"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "",
+                  "description": "Sort order (e.g. price_asc, price_desc, newest)"
+                },
+                {
+                  "key": "shopId",
+                  "value": "",
+                  "description": "Filter products by specific seller shop ID"
+                },
+                {
+                  "key": "lat",
+                  "value": "",
+                  "description": "Latitude for geospatial proximity filter"
+                },
+                {
+                  "key": "lng",
+                  "value": "",
+                  "description": "Longitude for geospatial proximity filter"
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "",
+                  "description": "Search radius in kilometers"
+                },
+                {
+                  "key": "condition",
+                  "value": "",
+                  "description": "Filter by device condition (e.g. Grade A+ Like New, Spotless Mint)"
+                }
+              ]
+            },
+            "description": "Fetch all products with optional filters for search, category, brand, price range, city, sorting, shop, geospatial radius, and condition."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Products (Seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "mine"
+              ]
+            },
+            "description": "Fetch all products belonging to the logged-in seller's shop."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Products By Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/category/:category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "category",
+                ":category"
+              ],
+              "variable": [
+                {
+                  "key": "category",
+                  "value": "Mobiles",
+                  "description": "Category name or slug"
+                }
+              ]
+            },
+            "description": "Fetch products belonging to a specific category."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Products By Brand",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/brand/:brand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "brand",
+                ":brand"
+              ],
+              "variable": [
+                {
+                  "key": "brand",
+                  "value": "Apple",
+                  "description": "Brand name to filter by"
+                }
+              ]
+            },
+            "description": "Fetch products belonging to a specific brand."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Products By Shop ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/shop/:shopId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "shop",
+                ":shopId"
+              ],
+              "variable": [
+                {
+                  "key": "shopId",
+                  "value": "shop_id_here",
+                  "description": "Shop ID to filter products by"
+                }
+              ]
+            },
+            "description": "Fetch products belonging to a specific shop ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "product_id_here",
+                  "description": "ID of the product"
+                }
+              ]
+            },
+            "description": "Fetch single product details by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product (Seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"iPhone 15 Pro 128GB\",\n  \"brand\": \"Apple\",\n  \"category\": \"Mobiles & Tablets\",\n  \"description\": \"Brand new Apple iPhone 15 Pro with Titanium build.\",\n  \"price\": 129990,\n  \"stock\": 5,\n  \"specs\": {\n    \"color\": \"Natural Titanium\",\n    \"storage\": \"128GB\",\n    \"ram\": \"8GB\"\n  },\n  \"conditionInfo\": {\n    \"condition\": \"Grade A+ Like New\",\n    \"batteryHealth\": \"98%\",\n    \"warrantyStatus\": \"6 Months Store Warranty\",\n    \"purchaseYear\": 2024,\n    \"usageDuration\": \"3 Months\",\n    \"repairHistory\": \"Never Opened / Original Parts\",\n    \"replacedParts\": \"None\",\n    \"originalBox\": true,\n    \"originalInvoice\": true,\n    \"includedAccessories\": [\n      \"Charger\",\n      \"Cable\",\n      \"Case\"\n    ],\n    \"defects\": \"None\",\n    \"sellerNotes\": \"Mint condition device with all accessories.\"\n  },\n  \"images\": [\n    \"https://example.com/products/iphone15pro-1.jpg\",\n    \"https://example.com/products/iphone15pro-2.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "description": "Create a new product under the authenticated seller's store."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product (Seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"iPhone 15 Pro 256GB Titanium\",\n  \"price\": 139990,\n  \"stock\": 3,\n  \"specs\": {\n    \"color\": \"Natural Titanium\",\n    \"storage\": \"256GB\",\n    \"ram\": \"8GB\"\n  },\n  \"conditionInfo\": {\n    \"condition\": \"Spotless Mint\",\n    \"batteryHealth\": \"100%\",\n    \"warrantyStatus\": \"Apple Care Warranty\",\n    \"purchaseYear\": 2024,\n    \"usageDuration\": \"1 Month\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "product_id_here",
+                  "description": "ID of product to update"
+                }
+              ]
+            },
+            "description": "Update product details by ID owned by the logged-in seller."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Product (Seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "product_id_here",
+                  "description": "ID of product to delete"
+                }
+              ]
+            },
+            "description": "Delete a product by ID owned by the logged-in seller."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            },
+            "description": "Fetch list of all categories."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "category_id_here",
+                  "description": "ID of the category"
+                }
+              ]
+            },
+            "description": "Fetch single category by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category Specifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories/:id/specifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                ":id",
+                "specifications"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "category_id_here",
+                  "description": "ID of the category"
+                }
+              ]
+            },
+            "description": "Fetch dynamic specification field configuration (specConfig) defined for a category."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mobiles & Tablets\",\n  \"slug\": \"mobiles-tablets\",\n  \"image\": \"https://example.com/categories/mobiles.png\",\n  \"specConfig\": [\n    {\n      \"key\": \"ram\",\n      \"label\": \"RAM\",\n      \"type\": \"select\",\n      \"options\": [\n        \"4GB\",\n        \"6GB\",\n        \"8GB\",\n        \"12GB\",\n        \"16GB\"\n      ],\n      \"required\": true\n    },\n    {\n      \"key\": \"storage\",\n      \"label\": \"Storage Capacity\",\n      \"type\": \"select\",\n      \"options\": [\n        \"64GB\",\n        \"128GB\",\n        \"256GB\",\n        \"512GB\",\n        \"1TB\"\n      ],\n      \"required\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            },
+            "description": "Create a new product category with dynamic specification configurations."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Smartphones & Tablets\",\n  \"slug\": \"smartphones-tablets\",\n  \"image\": \"https://example.com/categories/smartphones.png\",\n  \"specConfig\": [\n    {\n      \"key\": \"ram\",\n      \"label\": \"RAM Memory\",\n      \"type\": \"select\",\n      \"options\": [\n        \"4GB\",\n        \"6GB\",\n        \"8GB\",\n        \"12GB\",\n        \"16GB\"\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "category_id_here",
+                  "description": "ID of the category to update"
+                }
+              ]
+            },
+            "description": "Update an existing category by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "category_id_here",
+                  "description": "ID of the category to delete"
+                }
+              ]
+            },
+            "description": "Delete a category by ID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Brands",
+      "item": [
+        {
+          "name": "Get All Brands",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands"
+              ]
+            },
+            "description": "Fetch list of all brands."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Brand By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/brands/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "brand_id_here",
+                  "description": "ID of the brand"
+                }
+              ]
+            },
+            "description": "Fetch single brand by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Brand",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Apple\",\n  \"logo\": \"https://example.com/logos/apple.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands"
+              ]
+            },
+            "description": "Create a new brand."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Brand",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Apple Inc.\",\n  \"logo\": \"https://example.com/logos/apple-updated.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/brands/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "brand_id_here",
+                  "description": "ID of the brand to update"
+                }
+              ]
+            },
+            "description": "Update an existing brand by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Brand",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/brands/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "brands",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "brand_id_here",
+                  "description": "ID of the brand to delete"
+                }
+              ]
+            },
+            "description": "Delete a brand by ID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Get All Subscription Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/plans?status=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "plans"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter by status (ACTIVE, INACTIVE)"
+                }
+              ]
+            },
+            "description": "Fetch all seller subscription plans with optional status filter."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Subscription Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/plans/active",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "plans",
+                "active"
+              ]
+            },
+            "description": "Fetch list of active seller subscription plans."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Subscription Plan By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/plans/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "plans",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "plan_id_here",
+                  "description": "ID of the subscription plan"
+                }
+              ]
+            },
+            "description": "Fetch subscription plan details by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Subscription Plan (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gold Seller Plan\",\n  \"description\": \"Unlimited listings and priority shop verification.\",\n  \"productLimit\": 100,\n  \"status\": \"ACTIVE\",\n  \"price\": 999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "plans"
+              ]
+            },
+            "description": "Create a new subscription plan (Admin role required)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Subscription Plan (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gold Pro Seller Plan\",\n  \"description\": \"200 product listings, priority verification and featured badge.\",\n  \"productLimit\": 200,\n  \"price\": 1499\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/plans/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "plans",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "plan_id_here",
+                  "description": "ID of plan to update"
+                }
+              ]
+            },
+            "description": "Update an existing subscription plan by ID (Admin role required)."
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Plan Status (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/plans/:id/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "plans",
+                ":id",
+                "status"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "plan_id_here",
+                  "description": "ID of plan"
+                }
+              ]
+            },
+            "description": "Toggle active/inactive status of a subscription plan (Admin role required)."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Subscription Plan (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/plans/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "plans",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "plan_id_here",
+                  "description": "ID of plan to delete"
+                }
+              ]
+            },
+            "description": "Delete a subscription plan by ID (Admin role required)."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Plan To Shop (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopId\": \"shop_id_here\",\n  \"planId\": \"plan_id_here\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "assign"
+              ]
+            },
+            "description": "Assign a subscription plan to a seller shop (Admin role required)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Subscription (Seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "mine"
+              ]
+            },
+            "description": "Fetch current active subscription plan and live product usage metrics (current products, product limit, remaining slots, verified status) for the logged-in seller shop."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shop Subscription",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/shop/:shopId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscriptions",
+                "shop",
+                ":shopId"
+              ],
+              "variable": [
+                {
+                  "key": "shopId",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop"
+                }
+              ]
+            },
+            "description": "Fetch current active subscription assigned to a shop."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Leads",
+      "item": [
+        {
+          "name": "Create Lead (Contact Seller)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopId\": \"shop_id_here\",\n  \"productId\": \"product_id_here\",\n  \"productName\": \"iPhone 15 Pro 128GB\",\n  \"customerName\": \"John Customer\",\n  \"customerPhone\": \"+919876543210\",\n  \"contactType\": \"whatsapp\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/leads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leads"
+              ]
+            },
+            "description": "Submit a customer lead inquiry to a seller (contactType: 'call' or 'whatsapp')."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Seller Leads (Seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/leads/seller",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leads",
+                "seller"
+              ]
+            },
+            "description": "Fetch all customer leads submitted for the authenticated seller's shop."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Follows",
+      "item": [
+        {
+          "name": "Follow Shop",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/:shopId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                ":shopId"
+              ],
+              "variable": [
+                {
+                  "key": "shopId",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop to follow"
+                }
+              ]
+            },
+            "description": "Follow a seller shop."
+          },
+          "response": []
+        },
+        {
+          "name": "Unfollow Shop",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/:shopId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                ":shopId"
+              ],
+              "variable": [
+                {
+                  "key": "shopId",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop to unfollow"
+                }
+              ]
+            },
+            "description": "Unfollow a seller shop."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Followed Shops",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/my-shops",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                "my-shops"
+              ]
+            },
+            "description": "Fetch all shops followed by the current logged-in user."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Follow Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/status/:shopId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                "status",
+                ":shopId"
+              ],
+              "variable": [
+                {
+                  "key": "shopId",
+                  "value": "shop_id_here",
+                  "description": "ID of the shop to check"
+                }
+              ]
+            },
+            "description": "Check if current user is following a specific shop."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shop Followers (Seller)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/follows/shop-followers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "follows",
+                "shop-followers"
+              ]
+            },
+            "description": "Fetch follower count and list for logged-in seller's shop."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Location",
+      "item": [
+        {
+          "name": "Geocode Address",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/location/geocode?address=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "location",
+                "geocode"
+              ],
+              "query": [
+                {
+                  "key": "address",
+                  "value": "Kochi, Kerala",
+                  "description": "Address text string to geocode"
+                }
+              ]
+            },
+            "description": "Geocode a text address string into latitude and longitude coordinates."
+          },
+          "response": []
+        },
+        {
+          "name": "Reverse Geocode Coordinates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/location/reverse-geocode?lat=&lng=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "location",
+                "reverse-geocode"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "9.9312",
+                  "description": "Latitude coordinate"
+                },
+                {
+                  "key": "lng",
+                  "value": "76.2673",
+                  "description": "Longitude coordinate"
+                }
+              ]
+            },
+            "description": "Convert latitude and longitude coordinates into a human-readable city/address location."
+          },
+          "response": []
+        },
+        {
+          "name": "Find Nearby Shops",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/location/nearby-shops?lat=&lng=&radiusKm=&category=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "location",
+                "nearby-shops"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "9.9312",
+                  "description": "Center latitude coordinate"
+                },
+                {
+                  "key": "lng",
+                  "value": "76.2673",
+                  "description": "Center longitude coordinate"
+                },
+                {
+                  "key": "radiusKm",
+                  "value": "10",
+                  "description": "Search radius in kilometers (default: 10)"
+                },
+                {
+                  "key": "category",
+                  "value": "Mobiles & Tablets",
+                  "description": "Optional category filter"
+                }
+              ]
+            },
+            "description": "Find verified seller shops within a specified geographic radius."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Network",
+      "item": [
+        {
+          "name": "Create Network Inquiry",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"John Customer\",\n  \"customerPhone\": \"+919876543210\",\n  \"customerEmail\": \"customer@example.com\",\n  \"city\": \"Kochi\",\n  \"category\": \"Mobiles & Tablets\",\n  \"gadgetNeeded\": \"Used iPhone 13 Pro 128GB in Blue\",\n  \"targetBudget\": 45000,\n  \"notes\": \"Looking for mint condition with original box\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/network/inquiries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "network",
+                "inquiries"
+              ]
+            },
+            "description": "Create a buyer network inquiry to request specific gadgets from local sellers."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Network Inquiries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/network/inquiries?city=&category=&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "network",
+                "inquiries"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "",
+                  "description": "Filter network inquiries by city"
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": "Filter by gadget category"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search inquiry by gadget name or details"
+                }
+              ]
+            },
+            "description": "Fetch all network buyer inquiries for sellers to browse."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wishlist",
+      "item": [
+        {
+          "name": "Toggle Product Wishlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/toggle/:productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                "toggle",
+                ":productId"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "product_id_here",
+                  "description": "ID of product to toggle in wishlist"
+                }
+              ]
+            },
+            "description": "Toggle product in/out of logged-in user's wishlist."
+          },
+          "response": []
+        },
+        {
+          "name": "Add Product To Wishlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/:productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                ":productId"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "product_id_here",
+                  "description": "ID of product to add"
+                }
+              ]
+            },
+            "description": "Add a specific product to logged-in user's wishlist."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Product From Wishlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/:productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                ":productId"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "product_id_here",
+                  "description": "ID of product to remove"
+                }
+              ]
+            },
+            "description": "Remove a specific product from logged-in user's wishlist."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Wishlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wishlist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist"
+              ]
+            },
+            "description": "Fetch all saved wishlist items with full product details for current user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wishlist Product IDs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wishlist/ids",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wishlist",
+                "ids"
+              ]
+            },
+            "description": "Fetch array of wishlisted product IDs for fast frontend sync."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activity Logs",
+      "item": [
+        {
+          "name": "Create Activity Log (Log Customer Action)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"WHATSAPP_CLICK\",\n  \"details\": \"Initiated WhatsApp inquiry for product \\\"Apple iPhone 15 Pro (128GB)\\\" (ID: 6aabe18e93e326d71fb9384c, Price: ₹74,999) from shop \\\"Global enterprises\\\"\",\n  \"userId\": \"6aab9b949e9bbfb5cb20ca14\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/activity-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-logs"
+              ]
+            },
+            "description": "Log real-time customer actions such as WHATSAPP_CLICK, CALL_CLICK, PRODUCT_CLICK, LOCATION_CLICK, DIRECTIONS_CLICK, WISHLIST, SEARCH. Automatically tracks user ID (from body or JWT Bearer), IP address, and browser User Agent."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Seller Customer Activity Logs & Leads",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-logs/seller/customers?shopId=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-logs",
+                "seller",
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "shopId",
+                  "value": "",
+                  "description": "Optional shop ID filter if seller manages multiple shops"
+                }
+              ]
+            },
+            "description": "Fetches aggregated customer activity logs & high-intent leads for the authenticated seller's store and products (WhatsApp clicks, Phone calls, Store direction clicks, Wishlist adds, and Product views/clicks). For Premium Plan sellers, customer identities and contact details for product clicks/views are fully unlocked. For Free/Starter sellers, high-intent leads (calls/WhatsApp/directions/wishlist) are shown with customer details, while click/view customer details are masked with an upgrade notice."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Activity Logs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-logs/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-logs",
+                "mine"
+              ]
+            },
+            "description": "Fetch recent activity logs for logged-in user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity Logs By User ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-logs/user/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-logs",
+                "user",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "user_id_here",
+                  "description": "Target User ID"
+                }
+              ]
+            },
+            "description": "Fetch activity logs for a specific user ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Activity Logs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/activity-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "activity-logs"
+              ]
+            },
+            "description": "Fetch all platform activity logs (Admin)."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    }
+  ]
 }
