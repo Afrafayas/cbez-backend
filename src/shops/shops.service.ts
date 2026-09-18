@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateShopDto } from './dto/create-shop.dto';
+import { formatShopModel } from './shop-profile.helper';
 
 @Injectable()
 export class ShopsService {
@@ -12,41 +13,63 @@ export class ShopsService {
     private subscriptionsService: SubscriptionsService,
   ) { }
 
+  private readonly shopInclude = {
+    subscription: { include: { plan: true } },
+    owner: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        latitude: true,
+        longitude: true,
+      },
+    },
+    _count: {
+      select: { products: true },
+    },
+  };
+
   async createOrUpdateForOwner(ownerId: string, dto: CreateShopDto) {
     const existing = await this.prisma.shop.findUnique({
       where: { ownerId },
     });
 
+    const data: any = { ...dto };
+    if (data.latitude !== undefined && data.latitude !== null && !isNaN(Number(data.latitude))) {
+      data.latitude = Number(data.latitude);
+    }
+    if (data.longitude !== undefined && data.longitude !== null && !isNaN(Number(data.longitude))) {
+      data.longitude = Number(data.longitude);
+    }
+
     if (existing) {
       const shop = await this.prisma.shop.update({
         where: { ownerId },
-        data: dto,
-        include: {
-          subscription: { include: { plan: true } },
-        },
+        data,
+        include: this.shopInclude,
       });
       await this.activityLogsService.log(ownerId, 'UPDATE_SHOP', `Updated shop profile "${shop.name}"`);
       return {
         success: true,
         message: 'Shop updated successfully',
-        data: { shop },
+        data: { shop: formatShopModel(shop) },
       };
     }
 
     const shop = await this.prisma.shop.create({
       data: {
-        ...dto,
+        ...data,
         ownerId,
       },
-      include: {
-        subscription: { include: { plan: true } },
-      },
+      include: this.shopInclude,
     });
     await this.activityLogsService.log(ownerId, 'CREATE_SHOP', `Created shop profile "${shop.name}" (Pending Verification)`);
     return {
       success: true,
       message: 'Shop created successfully',
-      data: { shop },
+      data: { shop: formatShopModel(shop) },
     };
   }
 
@@ -77,12 +100,7 @@ export class ShopsService {
 
     const shops = await this.prisma.shop.findMany({
       where,
-      include: {
-        subscription: { include: { plan: true } },
-        _count: {
-          select: { products: true },
-        },
-      },
+      include: this.shopInclude,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -90,7 +108,7 @@ export class ShopsService {
       success: true,
       message: 'Shops fetched successfully',
       data: {
-        shops,
+        shops: shops.map((s) => formatShopModel(s)),
       },
     };
   }
@@ -98,34 +116,28 @@ export class ShopsService {
   async findPending() {
     const shops = await this.prisma.shop.findMany({
       where: { verified: false },
-      include: {
-        subscription: { include: { plan: true } },
-        _count: { select: { products: true } },
-      },
+      include: this.shopInclude,
       orderBy: { createdAt: 'desc' },
     });
 
     return {
       success: true,
       message: 'Pending shops fetched successfully',
-      data: { shops },
+      data: { shops: shops.map((s) => formatShopModel(s)) },
     };
   }
 
   async findVerified() {
     const shops = await this.prisma.shop.findMany({
       where: { verified: true },
-      include: {
-        subscription: { include: { plan: true } },
-        _count: { select: { products: true } },
-      },
+      include: this.shopInclude,
       orderBy: { createdAt: 'desc' },
     });
 
     return {
       success: true,
       message: 'Verified shops fetched successfully',
-      data: { shops },
+      data: { shops: shops.map((s) => formatShopModel(s)) },
     };
   }
 
@@ -133,7 +145,7 @@ export class ShopsService {
     const shop = await this.prisma.shop.findUnique({
       where: { id },
       include: {
-        subscription: { include: { plan: true } },
+        ...this.shopInclude,
         products: true,
       },
     });
@@ -142,25 +154,11 @@ export class ShopsService {
       throw new NotFoundException(`Shop with ID ${id} not found`);
     }
 
-    const currentProducts = shop.products ? shop.products.length : 0;
-    const plan = shop.subscription?.plan;
-    const productLimit = plan ? plan.productLimit : 0;
-    const remaining = Math.max(0, productLimit - currentProducts);
-
     return {
       success: true,
       message: 'Shop fetched successfully',
       data: {
-        shop: {
-          ...shop,
-          subscriptionUsage: {
-            planName: plan ? plan.name : 'None',
-            productLimit,
-            currentProducts,
-            remaining,
-            isLimitReached: currentProducts >= productLimit,
-          },
-        },
+        shop: formatShopModel(shop),
       },
     };
   }
@@ -234,7 +232,7 @@ export class ShopsService {
     const updatedShop = await this.prisma.shop.update({
       where: { id },
       data: { verified: newStatus },
-      include: { subscription: { include: { plan: true } } },
+      include: this.shopInclude,
     });
 
     if (newStatus) {
@@ -265,7 +263,7 @@ export class ShopsService {
       success: true,
       message: `Shop "${updatedShop.name}" ${newStatus ? 'verified' : 'unverified'} successfully`,
       data: {
-        shop: updatedShop,
+        shop: formatShopModel(updatedShop),
       },
     };
   }
@@ -275,17 +273,26 @@ export class ShopsService {
     if (!existing) {
       throw new NotFoundException('Shop not found');
     }
+
+    const data: any = { ...dto };
+    if (data.latitude !== undefined && data.latitude !== null && !isNaN(Number(data.latitude))) {
+      data.latitude = Number(data.latitude);
+    }
+    if (data.longitude !== undefined && data.longitude !== null && !isNaN(Number(data.longitude))) {
+      data.longitude = Number(data.longitude);
+    }
+
     const shop = await this.prisma.shop.update({
       where: { id },
-      data: dto,
-      include: { subscription: { include: { plan: true } } },
+      data,
+      include: this.shopInclude,
     });
 
     return {
       success: true,
       message: 'Shop updated successfully',
       data: {
-        shop,
+        shop: formatShopModel(shop),
       },
     };
   }
