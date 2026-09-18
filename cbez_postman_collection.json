@@ -113,7 +113,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"seller@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"Alex Commerce\",\n  \"phone\": \"+919876543211\",\n  \"role\": \"seller\",\n  \"shopName\": \"Tech Zone Electronics\",\n  \"ownerName\": \"Alex Commerce\",\n  \"whatsapp\": \"+919876543211\",\n  \"address\": \"123 MG Road, Marine Drive\",\n  \"city\": \"Kochi\",\n  \"district\": \"Ernakulam\",\n  \"country\": \"India\",\n  \"category\": \"Mobiles & Tablets\",\n  \"aadhaarNumber\": \"123456789012\",\n  \"panNumber\": \"ABCDE1234F\",\n  \"profileImage\": \"https://example.com/profiles/seller.jpg\",\n  \"subscriptionPlanId\": \"plan_id_here\",\n  \"latitude\": 9.9312,\n  \"longitude\": 76.2673,\n  \"gstNumber\": \"32ABCDE1234F1Z5\",\n  \"websiteUrl\": \"https://techzone.com\",\n  \"businessHours\": \"Mon-Sat: 9 AM - 8 PM\",\n  \"businessDescription\": \"Leading mobile & electronics store in Kochi.\",\n  \"alternatePhone\": \"+919876543212\"\n}",
+              "raw": "{\n  \"name\": \"Afraf Fayas\",\n  \"shopName\": \"Kochi iStore Mobiles\",\n  \"phone\": \"+91 9876543211\",\n  \"email\": \"store@gmail.com\",\n  \"address\": \"123 Marine Drive, Broadway Corner, Kochi\",\n  \"password\": \"Password123!\",\n  \"role\": \"seller\",\n  \"whatsapp\": \"+91 9876543211\",\n  \"city\": \"Kochi\",\n  \"district\": \"Ernakulam\",\n  \"country\": \"India\",\n  \"category\": \"Mobiles & Tablets\",\n  \"aadhaarNumber\": \"123456789012\",\n  \"panNumber\": \"ABCDE1234F\",\n  \"profileImage\": \"https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80\",\n  \"subscriptionPlanId\": \"6aa9cff339fc71559cb6481e\",\n  \"latitude\": 9.9312,\n  \"longitude\": 76.2673,\n  \"gstNumber\": \"32ABCDE1234F1Z5\",\n  \"websiteUrl\": \"https://istore-kochi.com\",\n  \"businessHours\": \"10:00 AM - 9:00 PM\",\n  \"businessDescription\": \"Authorized second-hand Apple and premium smartphones dealership.\",\n  \"alternatePhone\": \"+91 9876543219\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -130,7 +130,7 @@
                 "register"
               ]
             },
-            "description": "Register a new seller account along with their store creation."
+            "description": "Register a new seller merchant account.\n\nMandatory Required Fields:\n- `name` (or `ownerName`): Owner Full Name\n- `shopName`: Merchant Shop Business Name\n- `phone`: Contact Phone Number\n- `email`: Merchant Email Address\n- `address`: Shop Business Address\n- `password`: Account Password (min 6 characters)\n- `role`: \"seller\"\n\nAll Other Details (Optional - May or may not be filled):\n- `whatsapp` (defaults to phone)\n- `city` (defaults to address/city)\n- `district` (defaults to \"Ernakulam\")\n- `country` (defaults to \"India\")\n- `category` (defaults to \"Mobiles & Tablets\")\n- `aadhaarNumber`\n- `panNumber`\n- `profileImage`\n- `subscriptionPlanId`\n- `latitude` & `longitude`\n- `gstNumber`\n- `websiteUrl`\n- `businessHours`\n- `businessDescription`\n- `alternatePhone`"
           },
           "response": []
         },
