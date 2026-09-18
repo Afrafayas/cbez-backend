@@ -33,7 +33,6 @@ export class AuthService {
         { field: 'country', message: 'Country is required for shop registration' },
         { field: 'aadhaarNumber', message: 'Aadhaar number is required for seller verification' },
         { field: 'panNumber', message: 'PAN number is required for seller verification' },
-        { field: 'subscriptionPlanId', message: 'Subscription plan selection is required for shop registration' },
       ];
 
       for (const { field, message } of requiredFields) {

@@ -13,6 +13,7 @@ import { BrandsModule } from './brands/brands.module';
 import { UsersModule } from './users/users.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { FollowsModule } from './follows/follows.module';
+import { WishlistModule } from './wishlist/wishlist.module';
 import { NetworkModule } from './network/network.module';
 import { LocationModule } from './location/location.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
@@ -30,6 +31,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
     UsersModule,
     ActivityLogsModule,
     FollowsModule,
+    WishlistModule,
     NetworkModule,
     LocationModule,
     SubscriptionsModule,
