@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -17,6 +17,7 @@ import { WishlistModule } from './wishlist/wishlist.module';
 import { NetworkModule } from './network/network.module';
 import { LocationModule } from './location/location.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
     NetworkModule,
     LocationModule,
     SubscriptionsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
