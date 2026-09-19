@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -26,7 +26,7 @@ async function main() {
       slug: 'laptops',
       image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800',
       specConfig: [
-        { key: 'processor', label: 'Processor', type: 'text', required: true, placeholder: 'e.g. Intel Core i7 13th Gen, Apple M3', filterable: true },
+        { key: 'processor', label: 'Processor', type: 'text', required: false, placeholder: 'e.g. Intel Core i7 13th Gen, Apple M3', filterable: true },
         { key: 'ram', label: 'RAM', type: 'select', required: true, options: ['8 GB', '16 GB', '32 GB', '64 GB'], filterable: true },
         { key: 'storage', label: 'Storage Capacity', type: 'select', required: true, options: ['256 GB', '512 GB', '1 TB', '2 TB'], filterable: true },
         { key: 'ssdOrHdd', label: 'Storage Type', type: 'select', required: false, options: ['SSD', 'HDD', 'Hybrid (SSD+HDD)'], filterable: true },

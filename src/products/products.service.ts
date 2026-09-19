@@ -1,10 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { formatShopModel, SELLER_VERIFICATION_MESSAGE } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class ProductsService {
@@ -13,24 +11,6 @@ export class ProductsService {
     private activityLogsService: ActivityLogsService,
     private subscriptionsService: SubscriptionsService,
   ) { }
-
-  private readonly productShopInclude = {
-    include: {
-      subscription: { include: { plan: true } },
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          role: true,
-          latitude: true,
-          longitude: true,
-        },
-      },
-      _count: { select: { products: true } },
-    },
-  };
 
   async create(sellerUserId: string, dto: CreateProductDto) {
     const shop = await this.prisma.shop.findUnique({
@@ -42,7 +22,9 @@ export class ProductsService {
     }
 
     if (!shop.verified) {
-      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
+      throw new ForbiddenException(
+        'Your shop account is pending Admin verification. You can upload products once Admin approves your shop.',
+      );
     }
 
     // Check Subscription Plan & Product Limit dynamically
@@ -109,7 +91,7 @@ export class ProductsService {
         shopId: shop.id,
       },
       include: {
-        shop: this.productShopInclude,
+        shop: true,
       },
     });
 
@@ -137,29 +119,8 @@ export class ProductsService {
       return {
         success: true,
         message: 'Products fetched successfully',
-        isApproved: false,
-        verificationStatus: 'NO_SHOP',
         data: {
           products: [],
-          isApproved: false,
-          verificationStatus: 'NO_SHOP',
-          verificationMessage: 'You must create a shop profile before adding products.',
-        },
-      };
-    }
-
-    if (!shop.verified) {
-      return {
-        success: true,
-        message: SELLER_VERIFICATION_MESSAGE,
-        isApproved: false,
-        verificationStatus: 'UNDER_VERIFICATION',
-        verificationMessage: SELLER_VERIFICATION_MESSAGE,
-        data: {
-          products: [],
-          isApproved: false,
-          verificationStatus: 'UNDER_VERIFICATION',
-          verificationMessage: SELLER_VERIFICATION_MESSAGE,
         },
       };
     }
@@ -167,18 +128,14 @@ export class ProductsService {
     const products = await this.prisma.product.findMany({
       where: { shopId: shop.id },
       orderBy: { createdAt: 'desc' },
-      include: { shop: this.productShopInclude },
+      include: { shop: true },
     });
 
     return {
       success: true,
       message: 'Products fetched successfully',
-      isApproved: true,
-      verificationStatus: 'VERIFIED',
       data: {
         products: products.map((p) => this.formatProduct(p)),
-        isApproved: true,
-        verificationStatus: 'VERIFIED',
       },
     };
   }
@@ -269,7 +226,7 @@ export class ProductsService {
       where,
       orderBy,
       include: {
-        shop: this.productShopInclude,
+        shop: true,
       },
     });
 
@@ -368,7 +325,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { shop: this.productShopInclude },
+      include: { shop: true },
     });
 
     if (!product) {
@@ -393,7 +350,7 @@ export class ProductsService {
         },
       },
       orderBy: { createdAt: 'desc' },
-      include: { shop: this.productShopInclude },
+      include: { shop: true },
     });
 
     return {
@@ -414,7 +371,7 @@ export class ProductsService {
         },
       },
       orderBy: { createdAt: 'desc' },
-      include: { shop: this.productShopInclude },
+      include: { shop: true },
     });
 
     return {
@@ -430,7 +387,7 @@ export class ProductsService {
     const products = await this.prisma.product.findMany({
       where: { shopId },
       orderBy: { createdAt: 'desc' },
-      include: { shop: this.productShopInclude },
+      include: { shop: true },
     });
 
     return {
@@ -443,68 +400,10 @@ export class ProductsService {
   }
 
 
-  async update(id: string, sellerUserId: string, dto: UpdateProductDto) {
-    const product = await this.prisma.product.findUnique({
-      where: { id },
-      include: { shop: this.productShopInclude },
-    });
-
-    if (!product) {
-      throw new NotFoundException('Product not found');
-    }
-
-    if (product.shop.ownerId !== sellerUserId) {
-      throw new ForbiddenException('You can only edit products from your own shop');
-    }
-
-    if (!product.shop.verified) {
-      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
-    }
-
-    const updateData: any = {};
-    if (dto.shopId !== undefined) updateData.shopId = dto.shopId;
-    if (dto.name !== undefined) updateData.name = dto.name;
-    if (dto.brand !== undefined) updateData.brand = dto.brand;
-    if (dto.category !== undefined) updateData.category = dto.category;
-    if (dto.description !== undefined) updateData.description = dto.description;
-    if (dto.price !== undefined) updateData.price = Number(dto.price);
-    if (dto.stock !== undefined) updateData.stock = Number(dto.stock);
-
-    if (dto.specs !== undefined) {
-      updateData.specsJson = JSON.stringify(dto.specs);
-    }
-    if (dto.conditionInfo !== undefined) {
-      updateData.conditionJson = JSON.stringify(dto.conditionInfo);
-    }
-    if (dto.images !== undefined) {
-      updateData.imagesJson = JSON.stringify(dto.images);
-    }
-
-    const updated = await this.prisma.product.update({
-      where: { id },
-      data: updateData,
-      include: { shop: this.productShopInclude },
-    });
-
-    await this.activityLogsService.log(
-      sellerUserId,
-      'UPDATE_PRODUCT',
-      'Updated product ' + updated.name,
-    );
-
-    return {
-      success: true,
-      message: 'Product updated successfully',
-      data: {
-        product: this.formatProduct(updated),
-      },
-    };
-  }
-
   async remove(id: string, sellerUserId: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { shop: this.productShopInclude },
+      include: { shop: true },
     });
 
     if (!product) {
@@ -513,10 +412,6 @@ export class ProductsService {
 
     if (product.shop.ownerId !== sellerUserId) {
       throw new ForbiddenException('You can only delete products from your own shop');
-    }
-
-    if (!product.shop.verified) {
-      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
     }
 
     await this.prisma.product.delete({ where: { id } });
@@ -555,8 +450,6 @@ export class ProductsService {
       images = [];
     }
 
-    const formattedShop = p.shop ? formatShopModel(p.shop) : null;
-
     return {
       id: p.id,
       name: p.name,
@@ -566,13 +459,10 @@ export class ProductsService {
       price: p.price,
       stock: p.stock,
       shopId: p.shopId,
-      shop: formattedShop,
+      shop: p.shop,
       specs,
       conditionInfo,
       images,
-      specsJson: p.specsJson,
-      conditionJson: p.conditionJson,
-      imagesJson: p.imagesJson,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     };
