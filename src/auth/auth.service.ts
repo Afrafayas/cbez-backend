@@ -13,7 +13,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private activityLogsService: ActivityLogsService,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDto, ipAddress?: string | null, userAgent?: string | null) {
     const role = dto.role || 'customer';
@@ -154,8 +154,8 @@ export class AuthService {
         user: formattedUser,
         token,
       },
-      user: formattedUser,
-      token,
+      // user: formattedUser,
+      // token,
     };
   }
 
@@ -211,8 +211,6 @@ export class AuthService {
         user: formattedUser,
         token,
       },
-      user: formattedUser,
-      token,
     };
   }
 
@@ -234,8 +232,10 @@ export class AuthService {
     const formattedUser = formatUserModel(user);
     return {
       success: true,
-      data: formattedUser,
-      user: formattedUser,
+      message: 'User profile fetched successfully',
+      data: {
+        user: formattedUser,
+      },
     };
   }
 
