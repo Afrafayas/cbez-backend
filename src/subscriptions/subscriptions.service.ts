@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { AssignSubscriptionDto } from './dto/assign-subscription.dto';
+import { SELLER_VERIFICATION_MESSAGE } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class SubscriptionsService {
@@ -224,14 +225,20 @@ export class SubscriptionsService {
       data: {
         shopId,
         shopName: shop.name,
-        verified: shop.verified,
+        verified: Boolean(shop.verified),
+        isApproved: Boolean(shop.verified),
+        verificationStatus: shop.verified ? 'VERIFIED' : 'UNDER_VERIFICATION',
+        verificationMessage: shop.verified
+          ? 'Approved'
+          : SELLER_VERIFICATION_MESSAGE,
         subscription: sub ? sub : null,
         usage: {
           planName: sub ? sub.plan.name : 'None',
           currentProducts: activeProductCount,
           productLimit: sub ? sub.plan.productLimit : 0,
           remaining: sub ? Math.max(0, sub.plan.productLimit - activeProductCount) : 0,
-          canAddProduct: sub ? (sub.plan.status === 'ACTIVE' && activeProductCount < sub.plan.productLimit) : false,
+          canAddProduct: Boolean(shop.verified && sub && sub.plan.status === 'ACTIVE' && activeProductCount < sub.plan.productLimit),
+          verificationRequired: !shop.verified,
         },
       },
     };
@@ -256,7 +263,7 @@ export class SubscriptionsService {
     }
 
     if (!shop.verified) {
-      throw new ForbiddenException('Your shop account is pending Admin verification. You can upload products once Admin approves your shop.');
+      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
     }
 
     const sub = await this.prisma.shopSubscription.findUnique({

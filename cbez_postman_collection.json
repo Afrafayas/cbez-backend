@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "cbez-b2c-api-collection-v3",
-    "name": "Cbez API Collection",
-    "description": "Complete, production-ready Postman collection for Cbez B2C Backend platform. Updated with full endpoint coverage across 14 modules: Auth, Users, Shops, Products, Categories, Brands, Subscriptions (including GET /subscriptions/mine), Leads, Follows, Location, Network, Wishlist, Activity Logs (including POST /activity-logs and GET /activity-logs/seller/customers with VIP/Free role masking), and Health Check.",
+    "name": "Cbez API Collection (v3.1 - Fully Updated)",
+    "description": "# Cbez B2C Platform - Complete Postman API Collection (v3.1)\n\nComprehensive, production-ready Postman collection covering all 71 API endpoints across 14 backend modules:\n1. **Health Check** - API root & status\n2. **Auth** - Customer registration, seller registration (optimized required fields: name, shopName, phone, email, address, password), login, and profile\n3. **Users** - Full user management (including latitude/longitude and nested shop details)\n4. **Shops** - Complete shop profiles (including coordinates, 13-field profile completion metrics, and live subscription usage)\n5. **Products** - Multi-filter product search, seller listings, specsJson, conditionJson, and complete shop relations\n6. **Categories** - Hierarchy & technical specifications templates\n7. **Brands** - Brand catalog management\n8. **Subscriptions** - Subscription plans, active plans, admin assignment, seller /mine status, and shop usage\n9. **Leads** - WhatsApp & Phone Call lead generation\n10. **Follows** - Shop follow/unfollow lifecycle & seller followers\n11. **Location** - Forward geocoding, reverse geocoding, and GPS radius shop discovery\n12. **Network** - B2B & Merchant trade inquiry boards\n13. **Wishlist** - Toggle, add, remove, get list, and fast IDs\n14. **Activity Logs** - Comprehensive event logging (LOCATION_CLICK, DIRECTIONS_CLICK, WHATSAPP_CLICK, CALL_CLICK, PRODUCT_CLICK, SHOP_CLICK, WISHLIST, and more)\n\n### Authentication\nLogin or Register requests automatically save the JWT token to the collection variable `{{auth_token}}`. All protected endpoints automatically inherit or include this bearer token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -41,9 +41,20 @@
                 "exec": [
                   "if (pm.response.code === 200 || pm.response.code === 201) {",
                   "    var jsonData = pm.response.json();",
-                  "    if (jsonData.token) {",
-                  "        pm.collectionVariables.set('auth_token', jsonData.token);",
-                  "        console.log('auth_token set successfully');",
+                  "    var token = jsonData.token || (jsonData.data && jsonData.data.token);",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('auth_token', token);",
+                  "        console.log('auth_token set:', token.substring(0, 15) + '...');",
+                  "    }",
+                  "    var user = jsonData.user || (jsonData.data && jsonData.data.user);",
+                  "    if (user) {",
+                  "        if (user.id) pm.collectionVariables.set('user_id', user.id);",
+                  "        if (user.role === 'seller' && token) pm.collectionVariables.set('seller_token', token);",
+                  "        if (user.role === 'admin' && token) pm.collectionVariables.set('admin_token', token);",
+                  "        if (user.shop && user.shop.id) {",
+                  "            pm.collectionVariables.set('shop_id', user.shop.id);",
+                  "            console.log('shop_id set from seller shop:', user.shop.id);",
+                  "        }",
                   "    }",
                   "}"
                 ],
@@ -92,9 +103,20 @@
                 "exec": [
                   "if (pm.response.code === 200 || pm.response.code === 201) {",
                   "    var jsonData = pm.response.json();",
-                  "    if (jsonData.token) {",
-                  "        pm.collectionVariables.set('auth_token', jsonData.token);",
-                  "        console.log('auth_token set successfully');",
+                  "    var token = jsonData.token || (jsonData.data && jsonData.data.token);",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('auth_token', token);",
+                  "        console.log('auth_token set:', token.substring(0, 15) + '...');",
+                  "    }",
+                  "    var user = jsonData.user || (jsonData.data && jsonData.data.user);",
+                  "    if (user) {",
+                  "        if (user.id) pm.collectionVariables.set('user_id', user.id);",
+                  "        if (user.role === 'seller' && token) pm.collectionVariables.set('seller_token', token);",
+                  "        if (user.role === 'admin' && token) pm.collectionVariables.set('admin_token', token);",
+                  "        if (user.shop && user.shop.id) {",
+                  "            pm.collectionVariables.set('shop_id', user.shop.id);",
+                  "            console.log('shop_id set from seller shop:', user.shop.id);",
+                  "        }",
                   "    }",
                   "}"
                 ],
@@ -143,9 +165,20 @@
                 "exec": [
                   "if (pm.response.code === 200 || pm.response.code === 201) {",
                   "    var jsonData = pm.response.json();",
-                  "    if (jsonData.token) {",
-                  "        pm.collectionVariables.set('auth_token', jsonData.token);",
-                  "        console.log('auth_token set successfully');",
+                  "    var token = jsonData.token || (jsonData.data && jsonData.data.token);",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('auth_token', token);",
+                  "        console.log('auth_token set:', token.substring(0, 15) + '...');",
+                  "    }",
+                  "    var user = jsonData.user || (jsonData.data && jsonData.data.user);",
+                  "    if (user) {",
+                  "        if (user.id) pm.collectionVariables.set('user_id', user.id);",
+                  "        if (user.role === 'seller' && token) pm.collectionVariables.set('seller_token', token);",
+                  "        if (user.role === 'admin' && token) pm.collectionVariables.set('admin_token', token);",
+                  "        if (user.shop && user.shop.id) {",
+                  "            pm.collectionVariables.set('shop_id', user.shop.id);",
+                  "            console.log('shop_id set from seller shop:', user.shop.id);",
+                  "        }",
                   "    }",
                   "}"
                 ],
@@ -199,7 +232,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/auth/me",
               "host": [
@@ -223,7 +262,13 @@
           "name": "Get All Users",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/users?role=&search=",
               "host": [
@@ -253,7 +298,13 @@
           "name": "Get User By ID",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/users/:id",
               "host": [
@@ -294,11 +345,16 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"John Customer Updated\",\n  \"email\": \"customer.updated@example.com\",\n  \"phone\": \"+919876543299\",\n  \"role\": \"customer\"\n}",
+              "raw": "{\n  \"name\": \"John Updated Customer\",\n  \"phone\": \"+919876543219\",\n  \"latitude\": 9.9816,\n  \"longitude\": 76.2999\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -340,7 +396,13 @@
               ]
             },
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/users/:id",
               "host": [
@@ -536,6 +598,11 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -569,6 +636,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
                 "type": "text"
               }
             ],
@@ -611,6 +683,11 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -648,7 +725,13 @@
           "name": "Delete Shop By ID",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/shops/:id",
               "host": [
@@ -769,7 +852,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/products/mine",
               "host": [
@@ -910,6 +999,11 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -952,6 +1046,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
                 "type": "text"
               }
             ],
@@ -999,7 +1098,13 @@
               ]
             },
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/products/:id",
               "host": [
@@ -1503,6 +1608,11 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1546,6 +1656,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
                 "type": "text"
               }
             ],
@@ -1599,6 +1714,11 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1647,7 +1767,13 @@
               ]
             },
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/subscriptions/plans/:id",
               "host": [
@@ -1689,6 +1815,11 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -1728,7 +1859,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/subscriptions/mine",
               "host": [
@@ -1822,7 +1959,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/leads/seller",
               "host": [
@@ -1856,7 +1999,13 @@
               ]
             },
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/follows/:shopId",
               "host": [
@@ -1892,7 +2041,13 @@
               ]
             },
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/follows/:shopId",
               "host": [
@@ -1928,7 +2083,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/follows/my-shops",
               "host": [
@@ -1957,7 +2118,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/follows/status/:shopId",
               "host": [
@@ -1994,7 +2161,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/follows/shop-followers",
               "host": [
@@ -2216,7 +2389,13 @@
               ]
             },
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/wishlist/toggle/:productId",
               "host": [
@@ -2253,7 +2432,13 @@
               ]
             },
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/wishlist/:productId",
               "host": [
@@ -2289,7 +2474,13 @@
               ]
             },
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/wishlist/:productId",
               "host": [
@@ -2325,7 +2516,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/wishlist",
               "host": [
@@ -2353,7 +2550,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/wishlist/ids",
               "host": [
@@ -2392,11 +2595,16 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"action\": \"WHATSAPP_CLICK\",\n  \"details\": \"Initiated WhatsApp inquiry for product \\\"Apple iPhone 15 Pro (128GB)\\\" (ID: 6aabe18e93e326d71fb9384c, Price: ₹74,999) from shop \\\"Global enterprises\\\"\",\n  \"userId\": \"6aab9b949e9bbfb5cb20ca14\"\n}",
+              "raw": "{\n  \"action\": \"LOCATION_CLICK\",\n  \"details\": \"Customer clicked Google Maps location for shop \\\"Kochi iStore Mobiles\\\" (Shop ID: {{shop_id}})\",\n  \"targetShopId\": \"{{shop_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2412,7 +2620,7 @@
                 "activity-logs"
               ]
             },
-            "description": "Log real-time customer actions such as WHATSAPP_CLICK, CALL_CLICK, PRODUCT_CLICK, LOCATION_CLICK, DIRECTIONS_CLICK, WISHLIST, SEARCH. Automatically tracks user ID (from body or JWT Bearer), IP address, and browser User Agent."
+            "description": "Logs customer and buyer actions across the platform.\n\nSupported Actions:\n- `LOCATION_CLICK` - Customer clicked Location / Google Maps button for a shop/product\n- `DIRECTIONS_CLICK` - Customer requested directions to the physical store\n- `WHATSAPP_CLICK` - Customer clicked to chat on WhatsApp\n- `CALL_CLICK` - Customer clicked to call seller\n- `PRODUCT_CLICK` - Customer viewed product details\n- `SHOP_CLICK` - Customer viewed merchant shop profile\n- `WISHLIST` - Customer added item to wishlist\n- `WISHLIST_REMOVE` - Customer removed item from wishlist\n- `CREATE_PRODUCT` / `UPDATE_PRODUCT` / `DELETE_PRODUCT`\n- `CREATE_SHOP` / `UPDATE_SHOP`\n- `REGISTER` / `LOGIN`"
           },
           "response": []
         },
@@ -2430,7 +2638,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/activity-logs/seller/customers?shopId=",
               "host": [
@@ -2467,7 +2681,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/activity-logs/mine",
               "host": [
@@ -2496,7 +2716,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/activity-logs/user/:userId",
               "host": [
@@ -2533,7 +2759,13 @@
               ]
             },
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/activity-logs",
               "host": [
@@ -2558,6 +2790,46 @@
     },
     {
       "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "seller_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "shop_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "product_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "plan_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "category_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "brand_id",
       "value": "",
       "type": "string"
     }

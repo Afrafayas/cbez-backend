@@ -4,7 +4,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { formatShopModel } from '../shops/shop-profile.helper';
+import { formatShopModel, SELLER_VERIFICATION_MESSAGE } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class ProductsService {
@@ -42,9 +42,7 @@ export class ProductsService {
     }
 
     if (!shop.verified) {
-      throw new ForbiddenException(
-        'Your shop account is pending Admin verification. You can upload products once Admin approves your shop.',
-      );
+      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
     }
 
     // Check Subscription Plan & Product Limit dynamically
@@ -139,8 +137,29 @@ export class ProductsService {
       return {
         success: true,
         message: 'Products fetched successfully',
+        isApproved: false,
+        verificationStatus: 'NO_SHOP',
         data: {
           products: [],
+          isApproved: false,
+          verificationStatus: 'NO_SHOP',
+          verificationMessage: 'You must create a shop profile before adding products.',
+        },
+      };
+    }
+
+    if (!shop.verified) {
+      return {
+        success: true,
+        message: SELLER_VERIFICATION_MESSAGE,
+        isApproved: false,
+        verificationStatus: 'UNDER_VERIFICATION',
+        verificationMessage: SELLER_VERIFICATION_MESSAGE,
+        data: {
+          products: [],
+          isApproved: false,
+          verificationStatus: 'UNDER_VERIFICATION',
+          verificationMessage: SELLER_VERIFICATION_MESSAGE,
         },
       };
     }
@@ -154,8 +173,12 @@ export class ProductsService {
     return {
       success: true,
       message: 'Products fetched successfully',
+      isApproved: true,
+      verificationStatus: 'VERIFIED',
       data: {
         products: products.map((p) => this.formatProduct(p)),
+        isApproved: true,
+        verificationStatus: 'VERIFIED',
       },
     };
   }
@@ -434,6 +457,10 @@ export class ProductsService {
       throw new ForbiddenException('You can only edit products from your own shop');
     }
 
+    if (!product.shop.verified) {
+      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
+    }
+
     const updateData: any = {};
     if (dto.shopId !== undefined) updateData.shopId = dto.shopId;
     if (dto.name !== undefined) updateData.name = dto.name;
@@ -486,6 +513,10 @@ export class ProductsService {
 
     if (product.shop.ownerId !== sellerUserId) {
       throw new ForbiddenException('You can only delete products from your own shop');
+    }
+
+    if (!product.shop.verified) {
+      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
     }
 
     await this.prisma.product.delete({ where: { id } });

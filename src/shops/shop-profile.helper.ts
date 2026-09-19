@@ -77,6 +77,9 @@ export function calculateShopProfileCompletion(shop?: any, ownerEmail?: string):
   };
 }
 
+export const SELLER_VERIFICATION_MESSAGE =
+  'Your profile is under verification. After verification only you can create a product and access all the features.';
+
 export function formatShopModel(shop: any, currentProductsCount?: number, fallbackOwnerEmail?: string) {
   if (!shop) return null;
 
@@ -88,12 +91,16 @@ export function formatShopModel(shop: any, currentProductsCount?: number, fallba
   const productLimit = plan ? plan.productLimit : 0;
   const remaining = Math.max(0, productLimit - currentProducts);
 
+  const isVerified = Boolean(shop.verified);
+
   const subscriptionUsage = {
     planName: plan ? plan.name : 'None',
     productLimit,
     currentProducts,
     remaining,
     isLimitReached: productLimit > 0 ? currentProducts >= productLimit : false,
+    canAddProduct: Boolean(isVerified && (productLimit > 0 ? currentProducts < productLimit : false)),
+    verificationRequired: !isVerified,
   };
 
   const effectiveOwnerEmail = shop.owner?.email || fallbackOwnerEmail || shop.email;
@@ -122,7 +129,12 @@ export function formatShopModel(shop: any, currentProductsCount?: number, fallba
     businessDescription: shop.businessDescription || null,
     alternatePhone: shop.alternatePhone || null,
     category: shop.category,
-    verified: shop.verified,
+    verified: isVerified,
+    isApproved: isVerified,
+    verificationStatus: isVerified ? 'VERIFIED' : 'UNDER_VERIFICATION',
+    verificationMessage: isVerified
+      ? 'Shop is approved and verified'
+      : SELLER_VERIFICATION_MESSAGE,
     rating: shop.rating,
     latitude: shop.latitude !== null && shop.latitude !== undefined && !isNaN(Number(shop.latitude)) ? Number(shop.latitude) : null,
     longitude: shop.longitude !== null && shop.longitude !== undefined && !isNaN(Number(shop.longitude)) ? Number(shop.longitude) : null,
@@ -168,10 +180,23 @@ export function formatUserModel(user: any) {
         user.email,
       )
     : null;
+
+  const isSeller = user.role === 'seller';
+  const isApproved = isSeller ? Boolean(user.shop?.verified) : true;
+  const verificationStatus = isSeller
+    ? (user.shop?.verified ? 'VERIFIED' : 'UNDER_VERIFICATION')
+    : 'VERIFIED';
+  const verificationMessage = isSeller && !user.shop?.verified
+    ? SELLER_VERIFICATION_MESSAGE
+    : undefined;
+
   return {
     ...userWithoutPassword,
     latitude: user.latitude !== null && user.latitude !== undefined && !isNaN(Number(user.latitude)) ? Number(user.latitude) : null,
     longitude: user.longitude !== null && user.longitude !== undefined && !isNaN(Number(user.longitude)) ? Number(user.longitude) : null,
+    isApproved,
+    verificationStatus,
+    verificationMessage,
     shop: formattedShop,
     profileCompletion: formattedShop?.profileCompletion || (user.shop ? calculateShopProfileCompletion(user.shop, user.email) : undefined),
   };
