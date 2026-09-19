@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
+import { SELLER_VERIFICATION_MESSAGE } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class LeadsService {
@@ -119,6 +120,10 @@ export class LeadsService {
     const shop = await this.prisma.shop.findUnique({ where: { ownerId: sellerUserId } });
     if (!shop) {
       throw new ForbiddenException('No shop found for this seller account');
+    }
+
+    if (!shop.verified) {
+      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
     }
 
     const leads = await this.prisma.lead.findMany({

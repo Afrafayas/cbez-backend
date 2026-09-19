@@ -93,11 +93,11 @@ export class UsersService {
       ...(dto.role && { role: dto.role }),
     };
 
-    if (dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude))) {
-      updateData.latitude = Number(dto.latitude);
+    if (dto.latitude !== undefined) {
+      updateData.latitude = dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null;
     }
-    if (dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude))) {
-      updateData.longitude = Number(dto.longitude);
+    if (dto.longitude !== undefined) {
+      updateData.longitude = dto.longitude !== null && !isNaN(Number(dto.longitude)) ? Number(dto.longitude) : null;
     }
 
     const user = await this.prisma.user.update({
@@ -105,6 +105,17 @@ export class UsersService {
       data: updateData,
       include: this.userInclude,
     });
+
+    // If seller has an associated shop, sync shop coordinates
+    if (user.shop && (updateData.latitude !== undefined || updateData.longitude !== undefined)) {
+      await this.prisma.shop.update({
+        where: { id: user.shop.id },
+        data: {
+          ...(updateData.latitude !== undefined ? { latitude: updateData.latitude } : {}),
+          ...(updateData.longitude !== undefined ? { longitude: updateData.longitude } : {}),
+        },
+      });
+    }
 
     return {
       success: true,

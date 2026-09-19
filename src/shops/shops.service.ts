@@ -37,11 +37,21 @@ export class ShopsService {
     });
 
     const data: any = { ...dto };
-    if (data.latitude !== undefined && data.latitude !== null && !isNaN(Number(data.latitude))) {
-      data.latitude = Number(data.latitude);
+    if (data.latitude !== undefined) {
+      data.latitude = data.latitude !== null && !isNaN(Number(data.latitude)) ? Number(data.latitude) : null;
     }
-    if (data.longitude !== undefined && data.longitude !== null && !isNaN(Number(data.longitude))) {
-      data.longitude = Number(data.longitude);
+    if (data.longitude !== undefined) {
+      data.longitude = data.longitude !== null && !isNaN(Number(data.longitude)) ? Number(data.longitude) : null;
+    }
+
+    if (data.latitude !== undefined || data.longitude !== undefined) {
+      await this.prisma.user.update({
+        where: { id: ownerId },
+        data: {
+          ...(data.latitude !== undefined ? { latitude: data.latitude } : {}),
+          ...(data.longitude !== undefined ? { longitude: data.longitude } : {}),
+        },
+      });
     }
 
     if (existing) {
@@ -50,6 +60,7 @@ export class ShopsService {
         data,
         include: this.shopInclude,
       });
+
       await this.activityLogsService.log(ownerId, 'UPDATE_SHOP', `Updated shop profile "${shop.name}"`);
       return {
         success: true,
@@ -65,6 +76,7 @@ export class ShopsService {
       },
       include: this.shopInclude,
     });
+
     await this.activityLogsService.log(ownerId, 'CREATE_SHOP', `Created shop profile "${shop.name}" (Pending Verification)`);
     return {
       success: true,
@@ -275,11 +287,21 @@ export class ShopsService {
     }
 
     const data: any = { ...dto };
-    if (data.latitude !== undefined && data.latitude !== null && !isNaN(Number(data.latitude))) {
-      data.latitude = Number(data.latitude);
+    if (data.latitude !== undefined) {
+      data.latitude = data.latitude !== null && !isNaN(Number(data.latitude)) ? Number(data.latitude) : null;
     }
-    if (data.longitude !== undefined && data.longitude !== null && !isNaN(Number(data.longitude))) {
-      data.longitude = Number(data.longitude);
+    if (data.longitude !== undefined) {
+      data.longitude = data.longitude !== null && !isNaN(Number(data.longitude)) ? Number(data.longitude) : null;
+    }
+
+    if (existing.ownerId && (data.latitude !== undefined || data.longitude !== undefined)) {
+      await this.prisma.user.update({
+        where: { id: existing.ownerId },
+        data: {
+          ...(data.latitude !== undefined ? { latitude: data.latitude } : {}),
+          ...(data.longitude !== undefined ? { longitude: data.longitude } : {}),
+        },
+      });
     }
 
     const shop = await this.prisma.shop.update({

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ActivityLogsService } from './activity-logs.service';
+import { VerifiedSellerGuard } from '../auth/verified-seller.guard';
 
 @Controller('activity-logs')
 export class ActivityLogsController {
@@ -55,7 +56,7 @@ export class ActivityLogsController {
     return this.activityLogsService.findMine(req.user.id);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), VerifiedSellerGuard)
   @Get('seller/customers')
   async findSellerCustomerLogs(@Request() req: any, @Query('shopId') shopId?: string) {
     return this.activityLogsService.findSellerCustomerLogs(req.user?.id, shopId);

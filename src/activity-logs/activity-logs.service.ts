@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SELLER_VERIFICATION_MESSAGE } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class ActivityLogsService {
@@ -138,6 +139,10 @@ export class ActivityLogsService {
 
     if (!shop) {
       throw new NotFoundException('Shop profile not found for this seller');
+    }
+
+    if (!shop.verified) {
+      throw new ForbiddenException(SELLER_VERIFICATION_MESSAGE);
     }
 
     const planName = shop.subscription?.plan?.name || 'Free Plan';
