@@ -1,8 +1,9 @@
-﻿import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 @Injectable()
 export class ProductsService {
@@ -40,37 +41,38 @@ export class ProductsService {
       },
     });
 
-    const sanitizedSpecs: Record<string, string> = {};
+    // Specifications are optional across all categories
+    const sanitizedSpecs: Record<string, string> = { ...(dto.specs || {}) };
     if (categoryRecord && categoryRecord.specConfigJson) {
       try {
         const specRules: any[] = JSON.parse(categoryRecord.specConfigJson);
         const incomingSpecs = dto.specs || {};
 
         for (const rule of specRules) {
-          const val = incomingSpecs[rule.key];
-
-          // Check required spec fields
-          if (rule.required && (val === undefined || val === null || val === '')) {
-            throw new BadRequestException(
-              `Specification field "${rule.label}" (${rule.key}) is required for category "${dto.category}"`,
+          let val = incomingSpecs[rule.key];
+          if (val === undefined || val === null || val === '') {
+            val = incomingSpecs[rule.label];
+          }
+          if (val === undefined || val === null || val === '') {
+            const matchedEntry = Object.entries(incomingSpecs).find(
+              ([k]) =>
+                k.trim().toLowerCase() === rule.key.trim().toLowerCase() ||
+                k.trim().toLowerCase() === rule.label.trim().toLowerCase(),
             );
+            if (matchedEntry) {
+              val = matchedEntry[1];
+            }
+          }
+          if (val === undefined || val === null || val === '') {
+            val = (dto as any)[rule.key] ?? (dto as any)[rule.label];
           }
 
-          // Validate select option values if configured
           if (val !== undefined && val !== null && val !== '') {
-            if (rule.type === 'select' && Array.isArray(rule.options) && rule.options.length > 0) {
-              if (!rule.options.includes(val)) {
-                throw new BadRequestException(
-                  `Invalid option "${val}" for "${rule.label}". Allowed options are: ${rule.options.join(', ')}`,
-                );
-              }
-            }
             sanitizedSpecs[rule.key] = String(val);
+            sanitizedSpecs[rule.label] = String(val);
           }
         }
       } catch (e) {
-        if (e instanceof BadRequestException) throw e;
-        // Fallback: keep provided specs if JSON parsing failed
         Object.assign(sanitizedSpecs, dto.specs || {});
       }
     } else {
@@ -399,6 +401,59 @@ export class ProductsService {
     };
   }
 
+  async update(id: string, sellerUserId: string, dto: UpdateProductDto) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { shop: true },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (product.shop.ownerId !== sellerUserId) {
+      throw new ForbiddenException('You can only edit products from your own shop');
+    }
+
+    const updateData: any = {};
+    if (dto.shopId !== undefined) updateData.shopId = dto.shopId;
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.brand !== undefined) updateData.brand = dto.brand;
+    if (dto.category !== undefined) updateData.category = dto.category;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.price !== undefined) updateData.price = Number(dto.price);
+    if (dto.stock !== undefined) updateData.stock = Number(dto.stock);
+
+    if (dto.specs !== undefined) {
+      updateData.specsJson = JSON.stringify(dto.specs);
+    }
+    if (dto.conditionInfo !== undefined) {
+      updateData.conditionJson = JSON.stringify(dto.conditionInfo);
+    }
+    if (dto.images !== undefined) {
+      updateData.imagesJson = JSON.stringify(dto.images);
+    }
+
+    const updated = await this.prisma.product.update({
+      where: { id },
+      data: updateData,
+      include: { shop: true },
+    });
+
+    await this.activityLogsService.log(
+      sellerUserId,
+      'UPDATE_PRODUCT',
+      'Updated product ' + updated.name,
+    );
+
+    return {
+      success: true,
+      message: 'Product updated successfully',
+      data: {
+        product: this.formatProduct(updated),
+      },
+    };
+  }
 
   async remove(id: string, sellerUserId: string) {
     const product = await this.prisma.product.findUnique({

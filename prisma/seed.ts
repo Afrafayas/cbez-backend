@@ -11,8 +11,8 @@ async function main() {
       slug: 'smartphones',
       image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800',
       specConfig: [
-        { key: 'ram', label: 'RAM', type: 'select', required: true, options: ['2 GB', '3 GB', '4 GB', '6 GB', '8 GB', '12 GB', '16 GB'], filterable: true },
-        { key: 'storage', label: 'Storage', type: 'select', required: true, options: ['32 GB', '64 GB', '128 GB', '256 GB', '512 GB', '1 TB'], filterable: true },
+        { key: 'ram', label: 'RAM', type: 'select', required: false, options: ['2 GB', '3 GB', '4 GB', '6 GB', '8 GB', '12 GB', '16 GB'], filterable: true },
+        { key: 'storage', label: 'Storage', type: 'select', required: false, options: ['32 GB', '64 GB', '128 GB', '256 GB', '512 GB', '1 TB'], filterable: true },
         { key: 'processor', label: 'Processor / Chipset', type: 'text', required: false, placeholder: 'e.g. Snapdragon 8 Gen 3, Apple A17 Pro', filterable: true },
         { key: 'displaySize', label: 'Display Size', type: 'text', required: false, placeholder: 'e.g. 6.7 inch Super Retina XDR', filterable: false },
         { key: 'batteryHealth', label: 'Battery Health (%)', type: 'number', required: false, unit: '%', placeholder: 'e.g. 92', filterable: true },
@@ -27,8 +27,8 @@ async function main() {
       image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800',
       specConfig: [
         { key: 'processor', label: 'Processor', type: 'text', required: false, placeholder: 'e.g. Intel Core i7 13th Gen, Apple M3', filterable: true },
-        { key: 'ram', label: 'RAM', type: 'select', required: true, options: ['8 GB', '16 GB', '32 GB', '64 GB'], filterable: true },
-        { key: 'storage', label: 'Storage Capacity', type: 'select', required: true, options: ['256 GB', '512 GB', '1 TB', '2 TB'], filterable: true },
+        { key: 'ram', label: 'RAM', type: 'select', required: false, options: ['8 GB', '16 GB', '32 GB', '64 GB'], filterable: true },
+        { key: 'storage', label: 'Storage Capacity', type: 'select', required: false, options: ['256 GB', '512 GB', '1 TB', '2 TB'], filterable: true },
         { key: 'ssdOrHdd', label: 'Storage Type', type: 'select', required: false, options: ['SSD', 'HDD', 'Hybrid (SSD+HDD)'], filterable: true },
         { key: 'gpu', label: 'Graphics Card / GPU', type: 'text', required: false, placeholder: 'e.g. NVIDIA RTX 4060, Integrated M3', filterable: true },
         { key: 'displaySize', label: 'Display Size', type: 'select', required: false, options: ['13.3 inch', '14 inch', '15.6 inch', '16 inch', '17.3 inch'], filterable: true },
@@ -41,7 +41,7 @@ async function main() {
       slug: 'audio-earbuds',
       image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
       specConfig: [
-        { key: 'connectivity', label: 'Connectivity', type: 'select', required: true, options: ['True Wireless (TWS)', 'Wireless Bluetooth', 'Wired 3.5mm', 'Wired Type-C'], filterable: true },
+        { key: 'connectivity', label: 'Connectivity', type: 'select', required: false, options: ['True Wireless (TWS)', 'Wireless Bluetooth', 'Wired 3.5mm', 'Wired Type-C'], filterable: true },
         { key: 'bluetoothVersion', label: 'Bluetooth Version', type: 'text', required: false, placeholder: 'e.g. Bluetooth 5.3', filterable: false },
         { key: 'batteryLife', label: 'Battery Playtime', type: 'text', required: false, placeholder: 'e.g. 30 Hours with Case', filterable: true },
         { key: 'noiseCancellation', label: 'Active Noise Cancellation (ANC)', type: 'boolean', required: false, filterable: true },
@@ -54,8 +54,8 @@ async function main() {
       slug: 'cameras',
       image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800',
       specConfig: [
-        { key: 'sensorType', label: 'Camera Sensor Type', type: 'select', required: true, options: ['Full Frame', 'APS-C', 'Micro Four Thirds', '1-inch Sensor'], filterable: true },
-        { key: 'resolution', label: 'Resolution (Megapixels)', type: 'text', required: true, placeholder: 'e.g. 24.2 MP, 33 MP', filterable: true },
+        { key: 'sensorType', label: 'Camera Sensor Type', type: 'select', required: false, options: ['Full Frame', 'APS-C', 'Micro Four Thirds', '1-inch Sensor'], filterable: true },
+        { key: 'resolution', label: 'Resolution (Megapixels)', type: 'text', required: false, placeholder: 'e.g. 24.2 MP, 33 MP', filterable: true },
         { key: 'lensType', label: 'Lens Mount / Included Lens', type: 'text', required: false, placeholder: 'e.g. Sony E-Mount, 18-55mm Kit Lens', filterable: false },
         { key: 'videoResolution', label: 'Max Video Resolution', type: 'select', required: false, options: ['4K 60fps', '4K 30fps', '1080p 120fps', '8K Video'], filterable: true },
         { key: 'shutterCount', label: 'Shutter Count', type: 'number', required: false, placeholder: 'e.g. 12000', filterable: true },
@@ -66,8 +66,8 @@ async function main() {
       slug: 'gaming-accessories',
       image: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=800',
       specConfig: [
-        { key: 'platform', label: 'Console Platform', type: 'select', required: true, options: ['PlayStation 5', 'PlayStation 4 Pro', 'PlayStation 4', 'Xbox Series X', 'Xbox Series S', 'Nintendo Switch OLED', 'Nintendo Switch', 'Steam Deck'], filterable: true },
-        { key: 'storage', label: 'Internal Storage', type: 'select', required: true, options: ['512 GB', '825 GB SSD', '1 TB SSD', '2 TB SSD'], filterable: true },
+        { key: 'platform', label: 'Console Platform', type: 'select', required: false, options: ['PlayStation 5', 'PlayStation 4 Pro', 'PlayStation 4', 'Xbox Series X', 'Xbox Series S', 'Nintendo Switch OLED', 'Nintendo Switch', 'Steam Deck'], filterable: true },
+        { key: 'storage', label: 'Internal Storage', type: 'select', required: false, options: ['512 GB', '825 GB SSD', '1 TB SSD', '2 TB SSD'], filterable: true },
         { key: 'controllersIncluded', label: 'Controllers Included', type: 'select', required: false, options: ['1 Controller', '2 Controllers', 'No Controller'], filterable: true },
         { key: 'resolutionSupport', label: 'Resolution Support', type: 'select', required: false, options: ['4K HDR', '1440p', '1080p Full HD'], filterable: false },
       ],
