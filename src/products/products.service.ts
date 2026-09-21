@@ -14,22 +14,41 @@ export class ProductsService {
   ) { }
 
   async create(sellerUserId: string, dto: CreateProductDto) {
-    const shop = await this.prisma.shop.findUnique({
-      where: { ownerId: sellerUserId },
+    const callingUser = await this.prisma.user.findUnique({
+      where: { id: sellerUserId },
     });
 
-    if (!shop) {
-      throw new ForbiddenException('You must create a shop profile before adding products');
-    }
+    let shop: any = null;
 
-    if (!shop.verified) {
-      throw new ForbiddenException(
-        'Your shop account is pending Admin verification. You can upload products once Admin approves your shop.',
-      );
-    }
+    if (callingUser?.role === 'admin') {
+      const targetShopId = dto.shopId || (dto as any).shop;
+      if (targetShopId) {
+        shop = await this.prisma.shop.findUnique({ where: { id: targetShopId } });
+      }
+      if (!shop) {
+        shop = await this.prisma.shop.findFirst({ orderBy: { createdAt: 'desc' } });
+      }
+      if (!shop) {
+        throw new ForbiddenException('No dealer shop found to add product to. Please create a shop first.');
+      }
+    } else {
+      shop = await this.prisma.shop.findUnique({
+        where: { ownerId: sellerUserId },
+      });
 
-    // Check Subscription Plan & Product Limit dynamically
-    await this.subscriptionsService.checkProductLimit(shop.id);
+      if (!shop) {
+        throw new ForbiddenException('You must create a shop profile before adding products');
+      }
+
+      if (!shop.verified) {
+        throw new ForbiddenException(
+          'Your shop account is pending Admin verification. You can upload products once Admin approves your shop.',
+        );
+      }
+
+      // Check Subscription Plan & Product Limit dynamically
+      await this.subscriptionsService.checkProductLimit(shop.id);
+    }
 
     // Validate category and perform dynamic spec validation if category spec config exists
     const categoryRecord = await this.prisma.category.findFirst({
