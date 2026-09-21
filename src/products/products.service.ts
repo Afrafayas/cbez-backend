@@ -223,7 +223,8 @@ export class ProductsService {
       query.city &&
       query.city !== 'all' &&
       query.city !== 'All Cities' &&
-      query.city !== 'All'
+      query.city !== 'All' &&
+      (query.lat === undefined || query.lng === undefined || query.lat === null || query.lng === null)
     ) {
       where.shop = { city: { contains: query.city, mode: 'insensitive' } };
     }
