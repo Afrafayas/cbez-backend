@@ -68,7 +68,6 @@ export class ActivityLogsController {
     return this.activityLogsService.findByUser(userId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get()
   async findAll() {
     return this.activityLogsService.findAll();
