@@ -268,6 +268,7 @@ export class ProductsService {
       const cityCoordinatesMap: Record<string, { lat: number; lng: number }> = {
         kochi: { lat: 9.9312, lng: 76.2673 },
         cochin: { lat: 9.9312, lng: 76.2673 },
+        ernakulam: { lat: 9.9816, lng: 76.2999 },
         calicut: { lat: 11.2588, lng: 75.7804 },
         kozhikode: { lat: 11.2588, lng: 75.7804 },
         trivandrum: { lat: 8.5241, lng: 76.9366 },
@@ -287,30 +288,41 @@ export class ProductsService {
           let shopLat = p.shop?.latitude !== null && p.shop?.latitude !== undefined ? Number(p.shop.latitude) : null;
           let shopLng = p.shop?.longitude !== null && p.shop?.longitude !== undefined ? Number(p.shop.longitude) : null;
 
-          if ((shopLat === null || shopLng === null || isNaN(shopLat) || isNaN(shopLng)) && p.shop?.city) {
+          if (p.shop?.city) {
             const cityKey = String(p.shop.city).toLowerCase().trim();
-            const fallback = cityCoordinatesMap[cityKey] || cityCoordinatesMap['kochi'];
-            if (fallback) {
-              shopLat = fallback.lat;
-              shopLng = fallback.lng;
+            const cityFallback = cityCoordinatesMap[cityKey];
+            if (cityFallback) {
+              if (shopLat === null || shopLng === null || isNaN(shopLat) || isNaN(shopLng)) {
+                shopLat = cityFallback.lat;
+                shopLng = cityFallback.lng;
+              } else {
+                // If DB coordinates deviate by > 40 KM from shop city center (e.g. OLX Market has city Kochi but Kozhikode coords in DB), sanitize using true city center
+                const deviation = this.calculateHaversineDistance(shopLat, shopLng, cityFallback.lat, cityFallback.lng);
+                if (deviation > 40) {
+                  shopLat = cityFallback.lat;
+                  shopLng = cityFallback.lng;
+                }
+              }
             }
           }
 
-          if (shopLat !== null && shopLng !== null && !isNaN(shopLat) && !isNaN(shopLng)) {
-            const dist = this.calculateHaversineDistance(
-              userLat,
-              userLng,
-              shopLat,
-              shopLng,
-            );
-            const distanceKm = Math.round(dist * 10) / 10;
-            return {
-              ...p,
-              distanceKm,
-              shop: { ...p.shop, distanceKm, latitude: shopLat, longitude: shopLng },
-            };
+          if (shopLat === null || shopLng === null || isNaN(shopLat) || isNaN(shopLng)) {
+            shopLat = 9.9312;
+            shopLng = 76.2673;
           }
-          return p;
+
+          const dist = this.calculateHaversineDistance(
+            userLat,
+            userLng,
+            shopLat,
+            shopLng,
+          );
+          const distanceKm = Math.round(dist * 10) / 10;
+          return {
+            ...p,
+            distanceKm,
+            shop: { ...p.shop, distanceKm, latitude: shopLat, longitude: shopLng },
+          };
         })
         .filter(
           (p: any) =>
