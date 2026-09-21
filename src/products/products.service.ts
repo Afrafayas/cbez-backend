@@ -466,7 +466,11 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    if (product.shop.ownerId !== sellerUserId) {
+    const callingUser = await this.prisma.user.findUnique({
+      where: { id: sellerUserId },
+    });
+
+    if (callingUser?.role !== 'admin' && product.shop?.ownerId !== sellerUserId) {
       throw new ForbiddenException('You can only edit products from your own shop');
     }
 
@@ -520,7 +524,11 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    if (product.shop.ownerId !== sellerUserId) {
+    const callingUser = await this.prisma.user.findUnique({
+      where: { id: sellerUserId },
+    });
+
+    if (callingUser?.role !== 'admin' && product.shop?.ownerId !== sellerUserId) {
       throw new ForbiddenException('You can only delete products from your own shop');
     }
 
