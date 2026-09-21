@@ -201,6 +201,16 @@ export class ActivityLogsService {
     const seenLogKeys = new Set<string>();
 
     for (const log of rawLogs) {
+      // Check whether the logged-in user and the seller are the same user
+      if (
+        log.userId &&
+        shop.ownerId &&
+        String(log.userId).trim().toLowerCase() === String(shop.ownerId).trim().toLowerCase()
+      ) {
+        // user === seller: DO NOT include as Seller Activity Log
+        continue;
+      }
+
       const details = this.sanitizeDetails(log.details) || '';
       const detailsLower = details.toLowerCase();
 

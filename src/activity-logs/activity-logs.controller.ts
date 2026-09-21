@@ -9,7 +9,7 @@ export class ActivityLogsController {
 
   @Post()
   async createLog(
-    @Body() body: { action: string; details?: string; userId?: string },
+    @Body() body: { action: string; details?: string; userId?: string; sellerId?: string },
     @Request() req: any,
   ) {
     let tokenUserId: string | null = null;
@@ -35,10 +35,22 @@ export class ActivityLogsController {
       null;
     const userAgent = (req.headers?.['user-agent'] as string) || null;
 
+    const isSameUser = Boolean(
+      finalUserId &&
+      body.sellerId &&
+      String(finalUserId).trim().toLowerCase() === String(body.sellerId).trim().toLowerCase()
+    );
+
+    let cleanDetails = body.details;
+    if (isSameUser && cleanDetails) {
+      // Strip seller shop attribution so it does not trigger seller customer log
+      cleanDetails = cleanDetails.replace(/\(Shop:[^)]+\)/gi, '(Self view)').replace(/listed by "[^"]+"/gi, '(Own shop)');
+    }
+
     const log = await this.activityLogsService.log(
       finalUserId,
       body.action,
-      body.details,
+      cleanDetails,
       ipAddress,
       userAgent,
     );

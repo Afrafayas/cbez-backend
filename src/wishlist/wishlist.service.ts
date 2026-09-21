@@ -108,10 +108,19 @@ export class WishlistService {
       });
 
       const shopName = product.shop?.name || wishlist.product?.shop?.name || 'Shop';
+      const sellerId = product.shop?.ownerId || wishlist.product?.shop?.ownerId;
+      const isSameUser = Boolean(
+        userId &&
+        sellerId &&
+        String(userId).trim().toLowerCase() === String(sellerId).trim().toLowerCase()
+      );
+
       await this.activityLogsService.log(
         userId,
         'WISHLIST',
-        `Added product "${product.name}" (ID: ${product.id}, Price: ₹${product.price}) to wishlist (Shop: "${shopName}")`,
+        isSameUser
+          ? `Added product "${product.name}" (ID: ${product.id}, Price: ₹${product.price}) to personal wishlist`
+          : `Added product "${product.name}" (ID: ${product.id}, Price: ₹${product.price}) to wishlist (Shop: "${shopName}")`,
       );
 
       return {
@@ -171,10 +180,19 @@ export class WishlistService {
     });
 
     const shopName = product.shop?.name || wishlist.product?.shop?.name || 'Shop';
+    const sellerId = product.shop?.ownerId || wishlist.product?.shop?.ownerId;
+    const isSameUser = Boolean(
+      userId &&
+      sellerId &&
+      String(userId).trim().toLowerCase() === String(sellerId).trim().toLowerCase()
+    );
+
     await this.activityLogsService.log(
       userId,
       'WISHLIST',
-      `Added product "${product.name}" (ID: ${product.id}, Price: ₹${product.price}) to wishlist (Shop: "${shopName}")`,
+      isSameUser
+        ? `Added product "${product.name}" (ID: ${product.id}, Price: ₹${product.price}) to personal wishlist`
+        : `Added product "${product.name}" (ID: ${product.id}, Price: ₹${product.price}) to wishlist (Shop: "${shopName}")`,
     );
 
     return {
