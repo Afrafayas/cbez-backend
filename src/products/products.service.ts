@@ -263,7 +263,7 @@ export class ProductsService {
     ) {
       const userLat = Number(query.lat);
       const userLng = Number(query.lng);
-      const radiusKm = query.radiusKm ? Number(query.radiusKm) : 100;
+      const radiusKm = query.radiusKm ? Number(query.radiusKm) : 10;
 
       const cityCoordinatesMap: Record<string, { lat: number; lng: number }> = {
         kochi: { lat: 9.9312, lng: 76.2673 },
