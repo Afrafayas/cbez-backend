@@ -264,26 +264,49 @@ export class ProductsService {
       const userLng = Number(query.lng);
       const radiusKm = query.radiusKm ? Number(query.radiusKm) : 100;
 
+      const cityCoordinatesMap: Record<string, { lat: number; lng: number }> = {
+        kochi: { lat: 9.9312, lng: 76.2673 },
+        cochin: { lat: 9.9312, lng: 76.2673 },
+        calicut: { lat: 11.2588, lng: 75.7804 },
+        kozhikode: { lat: 11.2588, lng: 75.7804 },
+        trivandrum: { lat: 8.5241, lng: 76.9366 },
+        thiruvananthapuram: { lat: 8.5241, lng: 76.9366 },
+        thrissur: { lat: 10.5276, lng: 76.2144 },
+        trichur: { lat: 10.5276, lng: 76.2144 },
+        palakkad: { lat: 10.7867, lng: 76.6548 },
+        malappuram: { lat: 11.0720, lng: 76.0740 },
+        kannur: { lat: 11.8745, lng: 75.3704 },
+        kottayam: { lat: 9.5916, lng: 76.5222 },
+        kollam: { lat: 8.8932, lng: 76.6141 },
+        wayanad: { lat: 11.6854, lng: 76.1320 },
+      };
+
       formattedProducts = formattedProducts
         .map((p: any) => {
-          if (
-            p.shop &&
-            p.shop.latitude !== null &&
-            p.shop.longitude !== null &&
-            p.shop.latitude !== undefined &&
-            p.shop.longitude !== undefined
-          ) {
+          let shopLat = p.shop?.latitude !== null && p.shop?.latitude !== undefined ? Number(p.shop.latitude) : null;
+          let shopLng = p.shop?.longitude !== null && p.shop?.longitude !== undefined ? Number(p.shop.longitude) : null;
+
+          if ((shopLat === null || shopLng === null || isNaN(shopLat) || isNaN(shopLng)) && p.shop?.city) {
+            const cityKey = String(p.shop.city).toLowerCase().trim();
+            const fallback = cityCoordinatesMap[cityKey] || cityCoordinatesMap['kochi'];
+            if (fallback) {
+              shopLat = fallback.lat;
+              shopLng = fallback.lng;
+            }
+          }
+
+          if (shopLat !== null && shopLng !== null && !isNaN(shopLat) && !isNaN(shopLng)) {
             const dist = this.calculateHaversineDistance(
               userLat,
               userLng,
-              Number(p.shop.latitude),
-              Number(p.shop.longitude),
+              shopLat,
+              shopLng,
             );
             const distanceKm = Math.round(dist * 10) / 10;
             return {
               ...p,
               distanceKm,
-              shop: { ...p.shop, distanceKm },
+              shop: { ...p.shop, distanceKm, latitude: shopLat, longitude: shopLng },
             };
           }
           return p;
