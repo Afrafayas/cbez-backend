@@ -37,4 +37,8 @@ export class CreateProductDto {
 
   @IsOptional()
   images?: string[];
+
+  @IsOptional()
+  @IsString()
+  shopId?: string;
 }
