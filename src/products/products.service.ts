@@ -243,7 +243,7 @@ export class ProductsService {
     ) {
       const userLat = Number(query.lat);
       const userLng = Number(query.lng);
-      const radiusKm = query.radiusKm ? Number(query.radiusKm) : 10;
+      const radiusKm = query.radiusKm ? Number(query.radiusKm) : 100;
 
       formattedProducts = formattedProducts
         .map((p: any) => {
@@ -271,7 +271,7 @@ export class ProductsService {
         })
         .filter(
           (p: any) =>
-            p.distanceKm === undefined || p.distanceKm <= radiusKm,
+            p.distanceKm !== undefined && p.distanceKm <= radiusKm,
         );
 
       if (query.sortBy === 'distance') {
@@ -523,3 +523,4 @@ export class ProductsService {
     };
   }
 }
+
