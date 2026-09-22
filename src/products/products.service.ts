@@ -576,6 +576,7 @@ export class ProductsService {
       description: p.description,
       price: p.price,
       stock: p.stock,
+      isSoldOut: p.stock <= 0,
       shopId: p.shopId,
       shop: p.shop,
       specs,
