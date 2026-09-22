@@ -5,14 +5,14 @@ export class RegisterDto {
   @IsEmail({}, { message: 'Please provide a valid email address' })
   email?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Password is required' })
   @MinLength(6, { message: 'Password must be at least 6 characters' })
-  password: string;
+  password?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Name is required' })
-  name: string;
+  name?: string;
 
   @IsOptional()
   @IsString()

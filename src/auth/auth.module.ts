@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
+import { OtpService } from './otp.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 
@@ -16,7 +17,7 @@ import { VerifiedSellerGuard } from './verified-seller.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, VerifiedSellerGuard],
-  exports: [AuthService, JwtStrategy, PassportModule, VerifiedSellerGuard],
+  providers: [AuthService, OtpService, JwtStrategy, VerifiedSellerGuard],
+  exports: [AuthService, OtpService, JwtStrategy, PassportModule, VerifiedSellerGuard],
 })
 export class AuthModule {}

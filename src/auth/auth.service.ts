@@ -6,6 +6,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { formatUserModel } from '../shops/shop-profile.helper';
+import { OtpService } from './otp.service';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +14,67 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private activityLogsService: ActivityLogsService,
+    private otpService: OtpService,
   ) { }
+
+  async sendOtp(phone: string, role = 'customer') {
+    return this.otpService.sendOtp(phone, role);
+  }
+
+  async verifyOtpAndLogin(phone: string, otp: string, role = 'customer', ipAddress?: string | null, userAgent?: string | null) {
+    const { last10, phoneVariants } = await this.otpService.verifyOtp(phone, otp, role);
+
+    const shopInclude = {
+      include: {
+        subscription: { include: { plan: true } },
+        _count: { select: { products: true } },
+      },
+    };
+
+    // Find existing user by phone variants
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        phone: { in: phoneVariants },
+      },
+      include: {
+        shop: shopInclude,
+      },
+    });
+
+    if (existingUser) {
+      // Existing user: generate token and log in directly
+      const token = this.generateToken(existingUser.id, existingUser.email || existingUser.phone || existingUser.id, existingUser.role);
+
+      await this.activityLogsService.log(
+        existingUser.id,
+        'LOGIN',
+        `Logged in via WhatsApp OTP (${existingUser.role}) - Phone: ${existingUser.phone || 'N/A'}`,
+        ipAddress,
+        userAgent,
+      );
+
+      return {
+        success: true,
+        message: 'OTP verified. Logged in successfully.',
+        isNewUser: false,
+        data: {
+          user: formatUserModel(existingUser),
+          token,
+        },
+      };
+    }
+
+    // New user: return phone and role so frontend can collect details
+    return {
+      success: true,
+      message: 'OTP verified. Please complete your registration details.',
+      isNewUser: true,
+      data: {
+        phone: last10,
+        role: role || 'customer',
+      },
+    };
+  }
 
   async register(dto: RegisterDto, ipAddress?: string | null, userAgent?: string | null) {
     const role = dto.role || 'customer';
@@ -65,7 +126,7 @@ export class AuthService {
       }
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = dto.password ? await bcrypt.hash(dto.password, 10) : null;
 
     let shopCreateData: any = undefined;
     if (role === 'seller') {
