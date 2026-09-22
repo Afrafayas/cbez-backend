@@ -79,8 +79,10 @@ export class AuthService {
   async register(dto: RegisterDto, ipAddress?: string | null, userAgent?: string | null) {
     const role = dto.role || 'customer';
 
-    if (!dto.password) {
-      throw new BadRequestException('Password is required');
+    // Password is optional for OTP-based registration
+    let hashedPassword: string | null = null;
+    if (dto.password && dto.password.trim()) {
+      hashedPassword = await bcrypt.hash(dto.password, 10);
     }
 
     if (role === 'seller') {
@@ -126,7 +128,7 @@ export class AuthService {
       }
     }
 
-    const hashedPassword = dto.password ? await bcrypt.hash(dto.password, 10) : null;
+    // hashedPassword already computed above
 
     let shopCreateData: any = undefined;
     if (role === 'seller') {
