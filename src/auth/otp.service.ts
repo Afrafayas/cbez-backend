@@ -30,18 +30,33 @@ export class OtpService {
   }
 
   sanitizePhone(phone: string): { last10: string; receiverId: string; phoneVariants: string[] } {
-    const digitsOnly = (phone || '').replace(/\D/g, '');
+    const rawClean = (phone || '').trim();
+    const digitsOnly = rawClean.replace(/\D/g, '');
+
+    let receiverId = digitsOnly;
+    // If it's a 10-digit number without country code, default to India (+91)
+    if (digitsOnly.length === 10 && !rawClean.startsWith('+') && !rawClean.startsWith('00')) {
+      receiverId = `91${digitsOnly}`;
+    }
+
     const last10 = digitsOnly.slice(-10);
-    const receiverId = last10.length === 10 ? `91${last10}` : digitsOnly;
-    const phoneVariants = [
+    const last9 = digitsOnly.slice(-9);
+
+    const phoneVariants = Array.from(new Set([
+      digitsOnly,
+      receiverId,
+      `+${receiverId}`,
+      `+${digitsOnly}`,
+      rawClean,
       last10,
       `+91${last10}`,
       `+91 ${last10}`,
-      `91${last10}`,
-      `0${last10}`,
-      phone.trim()
-    ];
-    return { last10, receiverId, phoneVariants };
+      `+971${last9}`,
+      `+971 ${last9}`,
+      last9
+    ])).filter(Boolean);
+
+    return { last10: receiverId, receiverId, phoneVariants };
   }
 
   async sendWhatsAppMessage(receiverId: string, message: string): Promise<boolean> {
@@ -112,15 +127,16 @@ export class OtpService {
       throw new BadRequestException('Phone number and OTP are required');
     }
 
-    const { last10, phoneVariants } = this.sanitizePhone(phone);
-    const stored = this.otpStore.get(last10);
+    const { last10, receiverId, phoneVariants } = this.sanitizePhone(phone);
+    const digitsOnly = (phone || '').replace(/\D/g, '');
+    const stored = this.otpStore.get(receiverId) || this.otpStore.get(digitsOnly) || this.otpStore.get(digitsOnly.slice(-10));
 
     if (!stored) {
       throw new BadRequestException('OTP expired or not found. Please request a new OTP.');
     }
 
     if (Date.now() > stored.expiresAt) {
-      this.otpStore.delete(last10);
+      this.otpStore.delete(receiverId); this.otpStore.delete(digitsOnly); this.otpStore.delete(digitsOnly.slice(-10));
       throw new BadRequestException('OTP has expired. Please request a new OTP.');
     }
 
