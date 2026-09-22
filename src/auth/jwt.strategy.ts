@@ -19,9 +19,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload) {
+  async validate(payload: any) {
+    const userId = payload?.sub || payload?.id || payload?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Invalid token payload: missing user ID');
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
+      where: { id: userId },
       include: { shop: true },
     });
 
