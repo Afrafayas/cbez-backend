@@ -102,7 +102,8 @@ export class OtpService {
       message: sent ? 'OTP sent successfully to your WhatsApp number' : 'OTP generated (WhatsApp delivery in progress)',
       isExistingUser: Boolean(existingUser),
       phone: last10,
-      role: existingUser ? existingUser.role : role
+      role: existingUser ? existingUser.role : role,
+      ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {})
     };
   }
 
