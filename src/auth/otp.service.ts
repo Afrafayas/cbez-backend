@@ -1,4 +1,4 @@
-﻿import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface OtpRecord {
@@ -33,31 +33,31 @@ export class OtpService {
     const digitsOnly = rawClean.replace(/\D/g, '');
     let receiverId = digitsOnly;
     if (digitsOnly.length === 10 && !rawClean.startsWith('+') && !rawClean.startsWith('00')) {
-      receiverId = 91;
+      receiverId = `91${digitsOnly}`;
     }
     const last10 = digitsOnly.slice(-10);
     const last9 = digitsOnly.slice(-9);
     const phoneVariants = Array.from(new Set([
-      digitsOnly, receiverId, +, +,
-      rawClean, last10, +91, +91 ,
-      +971, +971 , last9
+      digitsOnly, receiverId, `+${receiverId}`, `+${digitsOnly}`,
+      rawClean, last10, `+91${last10}`, `+91 ${last10}`,
+      `+971${last9}`, `+971 ${last9}`, last9
     ])).filter(Boolean);
     return { last10: receiverId, receiverId, phoneVariants };
   }
 
   async sendWhatsAppMessage(receiverId: string, message: string): Promise<boolean> {
-    const url = ${this.whatsappApiUrl}?action=send&senderId=&authToken=&receiverId=&messageText=;
+    const url = `${this.whatsappApiUrl}?action=send&senderId=${this.senderId}&authToken=${this.authToken}&receiverId=${receiverId}&messageText=${encodeURIComponent(message)}`;
     try {
       const response = await fetch(url);
       const data = await response.json();
       if (!response.ok || data.success === false) {
-        this.logger.error(WhatsApp API error: );
+        this.logger.error(`WhatsApp API error: ${JSON.stringify(data)}`);
         return false;
       }
-      this.logger.log(WhatsApp message queued for : );
+      this.logger.log(`WhatsApp message queued for ${receiverId}: ${JSON.stringify(data)}`);
       return true;
     } catch (err: any) {
-      this.logger.error(Failed to send WhatsApp message to : );
+      this.logger.error(`Failed to send WhatsApp message to ${receiverId}: ${err.message}`);
       return false;
     }
   }
@@ -89,21 +89,21 @@ export class OtpService {
     };
     this.otpStore.set(last10, otpRecord);
     this.otpStore.set(receiverId, otpRecord);
-    this.logger.log(Generated OTP for : );
+    this.logger.log(`Generated OTP for ${receiverId}: ${otpCode}`);
 
     if (existingUser) {
       await this.prisma.user.update({
         where: { id: existingUser.id },
         data: { token: otpCode, tokenExpiry: expiresAt },
       });
-      this.logger.log(Updated DB token for existing user );
+      this.logger.log(`Updated DB token for existing user ${existingUser.id}`);
     }
 
-    const message = Your MLX DIRECT verification OTP is: . Valid for 5 minutes. Please do not share this OTP with anyone.;
+    const message = `Your MLX DIRECT verification OTP is: ${otpCode}. Valid for 5 minutes. Please do not share this OTP with anyone.`;
     const sent = await this.sendWhatsAppMessage(receiverId, message);
 
     if (!sent) {
-      this.logger.warn(WhatsApp send failed for , OTP stored in memory.);
+      this.logger.warn(`WhatsApp send failed for ${receiverId}, OTP stored in memory${existingUser ? ' & DB' : ''}.`);
     }
 
     return {
@@ -157,14 +157,13 @@ export class OtpService {
 
     // Step 4: Create stub if new user (OTP already validated above — safe to create now)
     if (!user) {
-      this.logger.log(New user verified OTP for  — creating user stub);
+      this.logger.log(`New user verified OTP for ${receiverId} - creating user stub`);
       // Use unique placeholder email: noemail_PHONE@placeholder.cbez
       // Avoids MongoDB null-unique collision while keeping email field populated.
       user = await this.prisma.user.create({
         data: {
           phone: receiverId,
-          email: 
-oemail_@placeholder.cbez,
+          email: `noemail_${receiverId}@placeholder.cbez`,
           role: memoryRecord?.role || role || 'customer',
           isNew: true,
           name: 'User',
