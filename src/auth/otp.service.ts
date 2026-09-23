@@ -71,16 +71,15 @@ export class OtpService {
       throw new BadRequestException('Please provide a valid 10-digit mobile number');
     }
 
-    // READ ONLY — no DB writes for new users in sendOtp.
-    // MongoDB unique index treats null as a real value: only ONE doc can have email=null.
-    // User stub creation is deferred to verifyOtp, after OTP is validated.
-    const existingUser = await this.prisma.user.findFirst({
+    // Check if user already exists
+    let existingUser = await this.prisma.user.findFirst({
       where: { phone: { in: phoneVariants } },
     });
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
+    // In-memory store for resilience
     const otpRecord: OtpRecord = {
       phone: receiverId,
       code: otpCode,
@@ -91,27 +90,44 @@ export class OtpService {
     this.otpStore.set(receiverId, otpRecord);
     this.logger.log(`Generated OTP for ${receiverId}: ${otpCode}`);
 
-    if (existingUser) {
-      await this.prisma.user.update({
+    if (!existingUser) {
+      // New user: create stub immediately so they appear in the users list.
+      // Use unique placeholder email — MongoDB unique index treats null as a real value,
+      // so only ONE document can have email=null. Placeholder avoids this collision.
+      existingUser = await this.prisma.user.create({
+        data: {
+          phone: receiverId,
+          email: `noemail_${receiverId}@placeholder.cbez`,
+          role: role || 'customer',
+          token: otpCode,
+          tokenExpiry: expiresAt,
+          isNew: true,
+          name: 'User',
+        },
+      });
+      this.logger.log(`Created new user stub for ${receiverId} (id: ${existingUser.id})`);
+    } else {
+      // Existing user: update OTP token
+      existingUser = await this.prisma.user.update({
         where: { id: existingUser.id },
         data: { token: otpCode, tokenExpiry: expiresAt },
       });
-      this.logger.log(`Updated DB token for existing user ${existingUser.id}`);
+      this.logger.log(`Updated OTP token for existing user ${existingUser.id}`);
     }
 
     const message = `Your MLX DIRECT verification OTP is: ${otpCode}. Valid for 5 minutes. Please do not share this OTP with anyone.`;
     const sent = await this.sendWhatsAppMessage(receiverId, message);
 
     if (!sent) {
-      this.logger.warn(`WhatsApp send failed for ${receiverId}, OTP stored in memory${existingUser ? ' & DB' : ''}.`);
+      this.logger.warn(`WhatsApp send failed for ${receiverId}, OTP stored in DB & memory.`);
     }
 
     return {
       success: true,
       message: sent ? 'OTP sent successfully to your WhatsApp number' : 'OTP generated (WhatsApp delivery in progress)',
-      isExistingUser: !!existingUser && !existingUser.isNew,
+      isExistingUser: !existingUser.isNew,
       phone: receiverId,
-      role: existingUser ? existingUser.role : role,
+      role: existingUser.role,
       ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
     };
   }
@@ -124,16 +140,7 @@ export class OtpService {
     const digitsOnly = (phone || '').replace(/\D/g, '');
     const cleanOtp = otp.trim();
 
-    // Step 1: Check memory store (primary source for new users)
-    const memoryRecord =
-      this.otpStore.get(receiverId) ||
-      this.otpStore.get(last10) ||
-      this.otpStore.get(digitsOnly) ||
-      this.otpStore.get(digitsOnly.slice(-10));
-
-    const memoryValid = !!memoryRecord && memoryRecord.code === cleanOtp && memoryRecord.expiresAt > Date.now();
-
-    // Step 2: Find existing user in DB
+    // Find user by phone variants
     let user = await this.prisma.user.findFirst({
       where: { phone: { in: phoneVariants } },
       include: {
@@ -146,52 +153,40 @@ export class OtpService {
       },
     });
 
-    // Step 3: Validate OTP (memory OR DB token)
-    const dbTokenValid = !!(user && user.token && user.token === cleanOtp);
-    if (!memoryValid && !dbTokenValid) {
+    if (!user) {
+      throw new BadRequestException('User with this mobile number does not exist. Please request an OTP first.');
+    }
+
+    // Validate OTP: DB token (primary) or in-memory fallback
+    const dbTokenValid = !!(user.token && user.token === cleanOtp);
+    const memoryRecord =
+      this.otpStore.get(receiverId) ||
+      this.otpStore.get(last10) ||
+      this.otpStore.get(digitsOnly) ||
+      this.otpStore.get(digitsOnly.slice(-10));
+    const memoryValid = !!(memoryRecord && memoryRecord.code === cleanOtp && memoryRecord.expiresAt > Date.now());
+
+    if (!dbTokenValid && !memoryValid) {
       throw new BadRequestException('Invalid OTP entered. Please check and try again.');
     }
-    if (!memoryValid && dbTokenValid && user?.tokenExpiry && new Date() > user.tokenExpiry) {
+
+    if (dbTokenValid && user.tokenExpiry && new Date() > user.tokenExpiry) {
       throw new BadRequestException('OTP has expired. Please request a new OTP.');
     }
 
-    // Step 4: Create stub if new user (OTP already validated above — safe to create now)
-    if (!user) {
-      this.logger.log(`New user verified OTP for ${receiverId} - creating user stub`);
-      // Use unique placeholder email: noemail_PHONE@placeholder.cbez
-      // Avoids MongoDB null-unique collision while keeping email field populated.
-      user = await this.prisma.user.create({
-        data: {
-          phone: receiverId,
-          email: `noemail_${receiverId}@placeholder.cbez`,
-          role: memoryRecord?.role || role || 'customer',
-          isNew: true,
-          name: 'User',
-        },
-        include: {
-          shop: {
-            include: {
-              subscription: { include: { plan: true } },
-              _count: { select: { products: true } },
-            },
+    // OTP verified: clear token from DB and memory
+    user = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { token: null, tokenExpiry: null },
+      include: {
+        shop: {
+          include: {
+            subscription: { include: { plan: true } },
+            _count: { select: { products: true } },
           },
         },
-      });
-    } else {
-      // Step 5: Clear OTP from DB for existing user
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { token: null, tokenExpiry: null },
-        include: {
-          shop: {
-            include: {
-              subscription: { include: { plan: true } },
-              _count: { select: { products: true } },
-            },
-          },
-        },
-      });
-    }
+      },
+    });
 
     this.otpStore.delete(receiverId);
     this.otpStore.delete(last10);
