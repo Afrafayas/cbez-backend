@@ -91,26 +91,26 @@ export class OtpService {
     this.logger.log(`Generated OTP for ${receiverId}: ${otpCode}`);
 
     if (!existingUser) {
-      // New user: create stub immediately so they appear in the users list.
-      // Use unique placeholder email — MongoDB unique index treats null as a real value,
-      // so only ONE document can have email=null. Placeholder avoids this collision.
+      // New user: create user immediately during Send OTP
       existingUser = await this.prisma.user.create({
         data: {
           phone: receiverId,
-          email: `noemail_${receiverId}@placeholder.cbez`,
-          role: role || 'customer',
+          name: 'User',
+          role: 'customer',
           token: otpCode,
           tokenExpiry: expiresAt,
           isNew: true,
-          name: 'User',
         },
       });
-      this.logger.log(`Created new user stub for ${receiverId} (id: ${existingUser.id})`);
+      this.logger.log(`Created new user during Send OTP: ${receiverId} (id: ${existingUser.id})`);
     } else {
-      // Existing user: update OTP token
+      // Existing user: update OTP token and expiry
       existingUser = await this.prisma.user.update({
         where: { id: existingUser.id },
-        data: { token: otpCode, tokenExpiry: expiresAt },
+        data: {
+          token: otpCode,
+          tokenExpiry: expiresAt,
+        },
       });
       this.logger.log(`Updated OTP token for existing user ${existingUser.id}`);
     }
@@ -126,23 +126,29 @@ export class OtpService {
       success: true,
       message: sent ? 'OTP sent successfully to your WhatsApp number' : 'OTP generated (WhatsApp delivery in progress)',
       isExistingUser: !existingUser.isNew,
-      phone: receiverId,
+      phone: existingUser.phone || receiverId,
       role: existingUser.role,
       ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
     };
   }
 
-  async verifyOtp(phone: string, otp: string, role = 'customer'): Promise<{ isValid: boolean; user: any; last10: string; phoneVariants: string[] }> {
-    if (!phone || !otp) {
+  async verifyOtp(phone: string, otp: string, role = 'customer'): Promise<{ isValid: boolean; user: any; last10: string }> {
+    if (!phone || !phone.trim() || !otp || !otp.trim()) {
       throw new BadRequestException('Phone number and OTP are required');
     }
-    const { last10, receiverId, phoneVariants } = this.sanitizePhone(phone);
-    const digitsOnly = (phone || '').replace(/\D/g, '');
+    const rawClean = phone.trim();
     const cleanOtp = otp.trim();
+    const { last10, receiverId, phoneVariants } = this.sanitizePhone(rawClean);
 
-    // Find user by phone variants
+    // 1. Find the user using ONLY the mobile number.
     let user = await this.prisma.user.findFirst({
-      where: { phone: { in: phoneVariants } },
+      where: {
+        OR: [
+          { phone: rawClean },
+          { phone: receiverId },
+          { phone: { in: phoneVariants } },
+        ],
+      },
       include: {
         shop: {
           include: {
@@ -157,27 +163,30 @@ export class OtpService {
       throw new BadRequestException('User with this mobile number does not exist. Please request an OTP first.');
     }
 
-    // Validate OTP: DB token (primary) or in-memory fallback
-    const dbTokenValid = !!(user.token && user.token === cleanOtp);
-    const memoryRecord =
-      this.otpStore.get(receiverId) ||
-      this.otpStore.get(last10) ||
-      this.otpStore.get(digitsOnly) ||
-      this.otpStore.get(digitsOnly.slice(-10));
-    const memoryValid = !!(memoryRecord && memoryRecord.code === cleanOtp && memoryRecord.expiresAt > Date.now());
-
-    if (!dbTokenValid && !memoryValid) {
+    // 2. Get the user's stored token and tokenExpiry.
+    // 3. Validate:
+    //    - entered OTP == user.token
+    //    - user.tokenExpiry exists
+    //    - current time is before tokenExpiry
+    // 4. If OTP is invalid or expired:
+    //    Return an appropriate error. Do not generate JWT.
+    if (!user.token || user.token !== cleanOtp) {
       throw new BadRequestException('Invalid OTP entered. Please check and try again.');
     }
 
-    if (dbTokenValid && user.tokenExpiry && new Date() > user.tokenExpiry) {
+    if (!user.tokenExpiry || new Date() > new Date(user.tokenExpiry)) {
       throw new BadRequestException('OTP has expired. Please request a new OTP.');
     }
 
-    // OTP verified: clear token from DB and memory
+    // 5. If OTP is valid:
+    //    - Clear token = null
+    //    - Clear tokenExpiry = null
     user = await this.prisma.user.update({
       where: { id: user.id },
-      data: { token: null, tokenExpiry: null },
+      data: {
+        token: null,
+        tokenExpiry: null,
+      },
       include: {
         shop: {
           include: {
@@ -190,8 +199,7 @@ export class OtpService {
 
     this.otpStore.delete(receiverId);
     this.otpStore.delete(last10);
-    this.otpStore.delete(digitsOnly);
 
-    return { isValid: true, user, last10, phoneVariants };
+    return { isValid: true, user, last10 };
   }
 }

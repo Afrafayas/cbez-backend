@@ -37,9 +37,11 @@ export class AuthService {
     const formattedUser = formatUserModel(user);
 
     return {
+      user: formattedUser,
+      token,
+      isNewUser: Boolean(user.isNew),
       success: true,
       message: 'OTP verified successfully.',
-      isNewUser: Boolean(user.isNew),
       data: {
         user: formattedUser,
         token,
