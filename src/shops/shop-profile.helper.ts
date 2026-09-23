@@ -161,7 +161,7 @@ export function formatShopModel(shop: any, currentProductsCount?: number, fallba
 
 export function formatUserModel(user: any) {
   if (!user) return null;
-  const { password, ...userWithoutPassword } = user;
+  const { password, token, tokenExpiry, ...userWithoutPassword } = user;
   const formattedShop = user.shop
     ? formatShopModel(
         {

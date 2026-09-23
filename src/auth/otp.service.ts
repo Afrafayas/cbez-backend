@@ -70,13 +70,13 @@ export class OtpService {
       }
       this.logger.log(`WhatsApp message queued for ${receiverId}: ${JSON.stringify(data)}`);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       this.logger.error(`Failed to send WhatsApp message to ${receiverId}: ${err.message}`);
       return false;
     }
   }
 
-  async sendOtp(phone: string, role = 'customer'): Promise<{ success: boolean; message: string; isExistingUser: boolean; phone: string; role: string }> {
+  async sendOtp(phone: string, role = 'customer'): Promise<{ success: boolean; message: string; isExistingUser: boolean; phone: string; role: string; devOtp?: string }> {
     if (!phone || !phone.trim()) {
       throw new BadRequestException('Phone number is required');
     }
@@ -87,7 +87,7 @@ export class OtpService {
     }
 
     // Check if user already exists with this phone
-    const existingUser = await this.prisma.user.findFirst({
+    let existingUser = await this.prisma.user.findFirst({
       where: {
         phone: { in: phoneVariants }
       }
@@ -95,60 +95,132 @@ export class OtpService {
 
     // Generate 6-digit numeric OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
 
+    // Save in in-memory store for fallback
     this.otpStore.set(last10, {
       phone: last10,
       code: otpCode,
-      role,
-      expiresAt
+      role: existingUser ? existingUser.role : role,
+      expiresAt: expiresAt.getTime()
+    });
+    this.otpStore.set(receiverId, {
+      phone: receiverId,
+      code: otpCode,
+      role: existingUser ? existingUser.role : role,
+      expiresAt: expiresAt.getTime()
     });
     this.logger.log(`Generated OTP for ${receiverId} (${last10}): ${otpCode}`);
+
+    // If user does not exist, create new user with isNew = true
+    if (!existingUser) {
+      existingUser = await this.prisma.user.create({
+        data: {
+          phone: receiverId,
+          role: role || 'customer',
+          token: otpCode,
+          tokenExpiry: expiresAt,
+          isNew: true,
+          name: 'User',
+        }
+      });
+      this.logger.log(`Created new user stub for ${receiverId} with isNew=true`);
+    } else {
+      // Update existing user with new token and tokenExpiry
+      existingUser = await this.prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          token: otpCode,
+          tokenExpiry: expiresAt,
+        }
+      });
+      this.logger.log(`Updated OTP token on existing user ${receiverId} (${existingUser.id})`);
+    }
 
     const message = `Your MLX DIRECT verification OTP is: ${otpCode}. Valid for 5 minutes. Please do not share this OTP with anyone.`;
     const sent = await this.sendWhatsAppMessage(receiverId, message);
 
     if (!sent) {
-      this.logger.warn(`WhatsApp send failed for ${receiverId}, OTP ${otpCode} stored in session.`);
+      this.logger.warn(`WhatsApp send failed for ${receiverId}, OTP stored in DB & session.`);
     }
 
     return {
       success: true,
       message: sent ? 'OTP sent successfully to your WhatsApp number' : 'OTP generated (WhatsApp delivery in progress)',
-      isExistingUser: Boolean(existingUser),
-      phone: last10,
-      role: existingUser ? existingUser.role : role,
+      isExistingUser: !existingUser.isNew,
+      phone: receiverId,
+      role: existingUser.role,
       ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {})
     };
   }
 
-  async verifyOtp(phone: string, otp: string, role = 'customer'): Promise<{ isValid: boolean; last10: string; phoneVariants: string[] }> {
+  async verifyOtp(phone: string, otp: string, role = 'customer'): Promise<{ isValid: boolean; user: any; last10: string; phoneVariants: string[] }> {
     if (!phone || !otp) {
       throw new BadRequestException('Phone number and OTP are required');
     }
 
     const { last10, receiverId, phoneVariants } = this.sanitizePhone(phone);
     const digitsOnly = (phone || '').replace(/\D/g, '');
-    const stored = this.otpStore.get(receiverId) || this.otpStore.get(digitsOnly) || this.otpStore.get(digitsOnly.slice(-10));
 
-    if (!stored) {
-      throw new BadRequestException('OTP expired or not found. Please request a new OTP.');
+    // Check user in database by phone number variants
+    const user = await this.prisma.user.findFirst({
+      where: {
+        phone: { in: phoneVariants },
+      },
+      include: {
+        shop: {
+          include: {
+            subscription: { include: { plan: true } },
+            _count: { select: { products: true } },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User with this mobile number does not exist. Please request an OTP first.');
     }
 
-    if (Date.now() > stored.expiresAt) {
-      this.otpStore.delete(receiverId); this.otpStore.delete(digitsOnly); this.otpStore.delete(digitsOnly.slice(-10));
-      throw new BadRequestException('OTP has expired. Please request a new OTP.');
-    }
+    const cleanOtp = otp.trim();
 
-    if (stored.code !== otp.trim()) {
+    // Verify OTP against database token or in-memory fallback
+    const dbTokenValid = user.token && user.token === cleanOtp;
+    const memoryRecord = this.otpStore.get(receiverId) || this.otpStore.get(digitsOnly) || this.otpStore.get(digitsOnly.slice(-10));
+    const memoryValid = memoryRecord && memoryRecord.code === cleanOtp && memoryRecord.expiresAt > Date.now();
+
+    if (!dbTokenValid && !memoryValid) {
       throw new BadRequestException('Invalid OTP entered. Please check and try again.');
     }
 
-    // OTP verified successfully - consume it
+    // Check expiry
+    if (user.tokenExpiry && new Date() > user.tokenExpiry) {
+      throw new BadRequestException('OTP has expired. Please request a new OTP.');
+    }
+
+    // OTP verified successfully: clear OTP token from database and memory
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        token: null,
+        tokenExpiry: null,
+      },
+      include: {
+        shop: {
+          include: {
+            subscription: { include: { plan: true } },
+            _count: { select: { products: true } },
+          },
+        },
+      },
+    });
+
+    this.otpStore.delete(receiverId);
     this.otpStore.delete(last10);
+    this.otpStore.delete(digitsOnly);
 
     return {
       isValid: true,
+      user: updatedUser,
       last10,
       phoneVariants
     };

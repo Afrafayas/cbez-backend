@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -223,8 +223,7 @@ export class ProductsService {
       query.city &&
       query.city !== 'all' &&
       query.city !== 'All Cities' &&
-      query.city !== 'All' &&
-      (query.lat === undefined || query.lng === undefined || query.lat === null || query.lng === null)
+      query.city !== 'All'
     ) {
       where.shop = { city: { contains: query.city, mode: 'insensitive' } };
     }
@@ -263,66 +262,31 @@ export class ProductsService {
     ) {
       const userLat = Number(query.lat);
       const userLng = Number(query.lng);
-      const radiusKm = query.radiusKm ? Number(query.radiusKm) : 10;
-
-      const cityCoordinatesMap: Record<string, { lat: number; lng: number }> = {
-        kochi: { lat: 9.9312, lng: 76.2673 },
-        cochin: { lat: 9.9312, lng: 76.2673 },
-        ernakulam: { lat: 9.9816, lng: 76.2999 },
-        calicut: { lat: 11.2588, lng: 75.7804 },
-        kozhikode: { lat: 11.2588, lng: 75.7804 },
-        trivandrum: { lat: 8.5241, lng: 76.9366 },
-        thiruvananthapuram: { lat: 8.5241, lng: 76.9366 },
-        thrissur: { lat: 10.5276, lng: 76.2144 },
-        trichur: { lat: 10.5276, lng: 76.2144 },
-        palakkad: { lat: 10.7867, lng: 76.6548 },
-        malappuram: { lat: 11.0720, lng: 76.0740 },
-        kannur: { lat: 11.8745, lng: 75.3704 },
-        kottayam: { lat: 9.5916, lng: 76.5222 },
-        kollam: { lat: 8.8932, lng: 76.6141 },
-        wayanad: { lat: 11.6854, lng: 76.1320 },
-      };
+      const radiusKm = query.radiusKm ? Number(query.radiusKm) : 100;
 
       formattedProducts = formattedProducts
         .map((p: any) => {
-          let shopLat = p.shop?.latitude !== null && p.shop?.latitude !== undefined ? Number(p.shop.latitude) : null;
-          let shopLng = p.shop?.longitude !== null && p.shop?.longitude !== undefined ? Number(p.shop.longitude) : null;
-
-          if (p.shop?.city) {
-            const cityKey = String(p.shop.city).toLowerCase().trim();
-            const cityFallback = cityCoordinatesMap[cityKey];
-            if (cityFallback) {
-              if (shopLat === null || shopLng === null || isNaN(shopLat) || isNaN(shopLng)) {
-                shopLat = cityFallback.lat;
-                shopLng = cityFallback.lng;
-              } else {
-                // If DB coordinates deviate by > 40 KM from shop city center (e.g. OLX Market has city Kochi but Kozhikode coords in DB), sanitize using true city center
-                const deviation = this.calculateHaversineDistance(shopLat, shopLng, cityFallback.lat, cityFallback.lng);
-                if (deviation > 40) {
-                  shopLat = cityFallback.lat;
-                  shopLng = cityFallback.lng;
-                }
-              }
-            }
+          if (
+            p.shop &&
+            p.shop.latitude !== null &&
+            p.shop.longitude !== null &&
+            p.shop.latitude !== undefined &&
+            p.shop.longitude !== undefined
+          ) {
+            const dist = this.calculateHaversineDistance(
+              userLat,
+              userLng,
+              Number(p.shop.latitude),
+              Number(p.shop.longitude),
+            );
+            const distanceKm = Math.round(dist * 10) / 10;
+            return {
+              ...p,
+              distanceKm,
+              shop: { ...p.shop, distanceKm },
+            };
           }
-
-          if (shopLat === null || shopLng === null || isNaN(shopLat) || isNaN(shopLng)) {
-            shopLat = 9.9312;
-            shopLng = 76.2673;
-          }
-
-          const dist = this.calculateHaversineDistance(
-            userLat,
-            userLng,
-            shopLat,
-            shopLng,
-          );
-          const distanceKm = Math.round(dist * 10) / 10;
-          return {
-            ...p,
-            distanceKm,
-            shop: { ...p.shop, distanceKm, latitude: shopLat, longitude: shopLng },
-          };
+          return p;
         })
         .filter(
           (p: any) =>
@@ -466,11 +430,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    const callingUser = await this.prisma.user.findUnique({
-      where: { id: sellerUserId },
-    });
-
-    if (callingUser?.role !== 'admin' && product.shop?.ownerId !== sellerUserId) {
+    if (product.shop.ownerId !== sellerUserId) {
       throw new ForbiddenException('You can only edit products from your own shop');
     }
 
@@ -524,11 +484,7 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    const callingUser = await this.prisma.user.findUnique({
-      where: { id: sellerUserId },
-    });
-
-    if (callingUser?.role !== 'admin' && product.shop?.ownerId !== sellerUserId) {
+    if (product.shop.ownerId !== sellerUserId) {
       throw new ForbiddenException('You can only delete products from your own shop');
     }
 
@@ -576,7 +532,6 @@ export class ProductsService {
       description: p.description,
       price: p.price,
       stock: p.stock,
-      isSoldOut: p.stock <= 0,
       shopId: p.shopId,
       shop: p.shop,
       specs,
@@ -587,4 +542,3 @@ export class ProductsService {
     };
   }
 }
-

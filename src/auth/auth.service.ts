@@ -22,56 +22,29 @@ export class AuthService {
   }
 
   async verifyOtpAndLogin(phone: string, otp: string, role = 'customer', ipAddress?: string | null, userAgent?: string | null) {
-    const { last10, phoneVariants } = await this.otpService.verifyOtp(phone, otp, role);
+    const { user, last10 } = await this.otpService.verifyOtp(phone, otp, role);
 
-    const shopInclude = {
-      include: {
-        subscription: { include: { plan: true } },
-        _count: { select: { products: true } },
-      },
-    };
+    const token = this.generateToken(user.id, user.email || user.phone || user.id, user.role);
 
-    // Find existing user by phone variants
-    const existingUser = await this.prisma.user.findFirst({
-      where: {
-        phone: { in: phoneVariants },
-      },
-      include: {
-        shop: shopInclude,
-      },
-    });
+    await this.activityLogsService.log(
+      user.id,
+      'LOGIN',
+      `Logged in via WhatsApp OTP (${user.role}) - Phone: ${user.phone || 'N/A'}`,
+      ipAddress,
+      userAgent,
+    );
 
-    if (existingUser) {
-      // Existing user: generate token and log in directly
-      const token = this.generateToken(existingUser.id, existingUser.email || existingUser.phone || existingUser.id, existingUser.role);
+    const formattedUser = formatUserModel(user);
 
-      await this.activityLogsService.log(
-        existingUser.id,
-        'LOGIN',
-        `Logged in via WhatsApp OTP (${existingUser.role}) - Phone: ${existingUser.phone || 'N/A'}`,
-        ipAddress,
-        userAgent,
-      );
-
-      return {
-        success: true,
-        message: 'OTP verified. Logged in successfully.',
-        isNewUser: false,
-        data: {
-          user: formatUserModel(existingUser),
-          token,
-        },
-      };
-    }
-
-    // New user: return phone and role so frontend can collect details
     return {
       success: true,
-      message: 'OTP verified. Please complete your registration details.',
-      isNewUser: true,
+      message: 'OTP verified successfully.',
+      isNewUser: Boolean(user.isNew),
       data: {
-        phone: last10,
-        role: role || 'customer',
+        user: formattedUser,
+        token,
+        phone: user.phone || last10,
+        role: user.role,
       },
     };
   }
@@ -79,56 +52,55 @@ export class AuthService {
   async register(dto: RegisterDto, ipAddress?: string | null, userAgent?: string | null) {
     const role = dto.role || 'customer';
 
-    // Password is optional for OTP-based registration
     let hashedPassword: string | null = null;
     if (dto.password && dto.password.trim()) {
       hashedPassword = await bcrypt.hash(dto.password, 10);
     }
 
+    // Only phone is strictly required for user registration
+    if (!dto.phone || !dto.phone.trim()) {
+      throw new BadRequestException('Phone number is required for registration');
+    }
+
     if (role === 'seller') {
-      const ownerName = dto.ownerName?.trim() || dto.name?.trim();
-      if (!ownerName) {
-        throw new BadRequestException('Name is required for seller registration');
-      }
       const shopName = dto.shopName?.trim() || dto.name?.trim();
       if (!shopName) {
         throw new BadRequestException('Shop name is required for seller registration');
       }
-      if (!dto.phone || !dto.phone.trim()) {
-        throw new BadRequestException('Phone number is required for seller registration');
-      }
-      if (!dto.email || !dto.email.trim()) {
-        throw new BadRequestException('Email address is required for seller registration');
-      }
       if (!dto.address || !dto.address.trim()) {
         throw new BadRequestException('Shop address is required for seller registration');
       }
-    } else {
-      if (!dto.phone && !dto.email) {
-        throw new BadRequestException('Phone number or email is required for customer registration');
-      }
     }
 
-    // Check existing user
+    // Check if user already exists by phone or email
+    let existingUser: any = null;
+    if (dto.phone) {
+      const { phoneVariants } = this.otpService.sanitizePhone(dto.phone);
+      existingUser = await this.prisma.user.findFirst({
+        where: { phone: { in: phoneVariants } },
+        include: { shop: true },
+      });
+    }
+
+    if (!existingUser && dto.email) {
+      existingUser = await this.prisma.user.findFirst({
+        where: { email: dto.email.toLowerCase() },
+        include: { shop: true },
+      });
+    }
+
+    // Check duplicate email across other users
     if (dto.email) {
       const existingEmail = await this.prisma.user.findFirst({
-        where: { email: dto.email.toLowerCase() },
+        where: {
+          email: dto.email.toLowerCase(),
+          ...(existingUser ? { id: { not: existingUser.id } } : {}),
+        },
       });
       if (existingEmail) {
         throw new BadRequestException('Email is already registered');
       }
     }
-
-    if (dto.phone) {
-      const existingPhone = await this.prisma.user.findUnique({
-        where: { phone: dto.phone },
-      });
-      if (existingPhone) {
-        throw new BadRequestException('Phone number is already registered');
-      }
-    }
-
-    // hashedPassword already computed above
 
     let shopCreateData: any = undefined;
     if (role === 'seller') {
@@ -157,26 +129,72 @@ export class AuthService {
       };
     }
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email ? dto.email.toLowerCase() : null,
-        password: hashedPassword,
-        name: dto.name || dto.ownerName || dto.shopName || 'User',
-        phone: dto.phone || null,
+    let user: any;
+    if (existingUser) {
+      // UPDATE existing user (who was created during sendOtp with isNew=true)
+      const updateData: any = {
+        name: dto.name || dto.ownerName || dto.shopName || existingUser.name || 'User',
+        email: dto.email ? dto.email.toLowerCase() : existingUser.email,
         role: role,
-        latitude: dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null,
-        longitude: dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude)) ? Number(dto.longitude) : null,
-        ...(shopCreateData ? { shop: { create: shopCreateData } } : {}),
-      },
-      include: {
-        shop: {
-          include: {
-            subscription: { include: { plan: true } },
-            _count: { select: { products: true } },
+        isNew: false,
+      };
+      if (hashedPassword) {
+        updateData.password = hashedPassword;
+      }
+      if (dto.phone) {
+        updateData.phone = dto.phone.trim();
+      }
+      if (dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude))) {
+        updateData.latitude = Number(dto.latitude);
+      }
+      if (dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude))) {
+        updateData.longitude = Number(dto.longitude);
+      }
+
+      if (shopCreateData) {
+        if (existingUser.shop) {
+          updateData.shop = { update: shopCreateData };
+        } else {
+          updateData.shop = { create: shopCreateData };
+        }
+      }
+
+      user = await this.prisma.user.update({
+        where: { id: existingUser.id },
+        data: updateData,
+        include: {
+          shop: {
+            include: {
+              subscription: { include: { plan: true } },
+              _count: { select: { products: true } },
+            },
           },
         },
-      },
-    });
+      });
+    } else {
+      // Create user if not existing
+      user = await this.prisma.user.create({
+        data: {
+          email: dto.email ? dto.email.toLowerCase() : null,
+          password: hashedPassword,
+          name: dto.name || dto.ownerName || dto.shopName || 'User',
+          phone: dto.phone || null,
+          role: role,
+          isNew: false,
+          latitude: dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null,
+          longitude: dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude)) ? Number(dto.longitude) : null,
+          ...(shopCreateData ? { shop: { create: shopCreateData } } : {}),
+        },
+        include: {
+          shop: {
+            include: {
+              subscription: { include: { plan: true } },
+              _count: { select: { products: true } },
+            },
+          },
+        },
+      });
+    }
 
     // Assign chosen subscription plan to shop
     if (user.shop && dto.subscriptionPlanId) {
@@ -203,8 +221,8 @@ export class AuthService {
     // Log Activity
     await this.activityLogsService.log(
       user.id,
-      'REGISTER',
-      `Registered new ${user.role} account (${user.name}) - Email: ${user.email || 'N/A'}, Phone: ${user.phone || 'N/A'}`,
+      existingUser ? 'UPDATE_PROFILE' : 'REGISTER',
+      `Registration completed for ${user.role} account (${user.name}) - Email: ${user.email || 'N/A'}, Phone: ${user.phone || 'N/A'}`,
       ipAddress,
       userAgent,
     );
@@ -217,8 +235,6 @@ export class AuthService {
         user: formattedUser,
         token,
       },
-      // user: formattedUser,
-      // token,
     };
   }
 
@@ -241,14 +257,19 @@ export class AuthService {
         include: { shop: shopInclude },
       });
     } else if (dto.phone) {
-      user = await this.prisma.user.findUnique({
-        where: { phone: dto.phone },
+      const { phoneVariants } = this.otpService.sanitizePhone(dto.phone);
+      user = await this.prisma.user.findFirst({
+        where: { phone: { in: phoneVariants } },
         include: { shop: shopInclude },
       });
     }
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException('No password set for this account. Please login with WhatsApp OTP.');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.password);

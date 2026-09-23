@@ -13,9 +13,12 @@ model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String?  @unique
   password  String?
-  name      String
-  phone     String?  @unique
-  role      String   @default("customer") // "customer" | "seller" | "admin"
+  name        String?   @default("User")
+  phone       String?   @unique
+  role        String    @default("customer") // "customer" | "seller" | "admin"
+  token       String?
+  tokenExpiry DateTime?
+  isNew       Boolean   @default(true)
   latitude  Float?
   longitude Float?
   createdAt DateTime @default(now())

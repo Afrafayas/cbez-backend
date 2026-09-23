@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Put, Patch, Get, Body, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -24,6 +24,29 @@ export class AuthController {
       null;
     const userAgent = (req.headers?.['user-agent'] as string) || null;
     return this.authService.verifyOtpAndLogin(dto.phone, dto.otp, dto.role, ipAddress, userAgent);
+  }
+
+  // Support PUT, PATCH, and POST for registration update
+  @Put('register')
+  async registerPut(@Body() dto: RegisterDto, @Request() req: any) {
+    const ipAddress =
+      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket?.remoteAddress ||
+      req.ip ||
+      null;
+    const userAgent = (req.headers?.['user-agent'] as string) || null;
+    return this.authService.register(dto, ipAddress, userAgent);
+  }
+
+  @Patch('register')
+  async registerPatch(@Body() dto: RegisterDto, @Request() req: any) {
+    const ipAddress =
+      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket?.remoteAddress ||
+      req.ip ||
+      null;
+    const userAgent = (req.headers?.['user-agent'] as string) || null;
+    return this.authService.register(dto, ipAddress, userAgent);
   }
 
   @Post('register')
