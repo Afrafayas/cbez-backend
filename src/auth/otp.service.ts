@@ -112,51 +112,25 @@ export class OtpService {
     });
     this.logger.log(`Generated OTP for ${receiverId} (${last10}): ${otpCode}`);
 
-    // If user does not exist, create new user with isNew = true
-    if (!existingUser) {
-      try {
-        existingUser = await this.prisma.user.create({
-          data: {
-            phone: receiverId,
-            email: null,
-            role: role || 'customer',
-            token: otpCode,
-            tokenExpiry: expiresAt,
-            isNew: true,
-            name: 'User',
-          }
-        });
-        this.logger.log(`Created new user stub for ${receiverId} with isNew=true`);
-      } catch (createErr: any) {
-        // P2002 = unique constraint violation (e.g. race condition or phone format mismatch)
-        if (createErr?.code === 'P2002') {
-          this.logger.warn(`User create failed (unique constraint) for ${receiverId}, attempting findFirst fallback`);
-          existingUser = await this.prisma.user.findFirst({
-            where: { OR: [{ phone: receiverId }, { phone: { in: phoneVariants } }] }
-          });
-          if (!existingUser) {
-            throw createErr; // truly unrecoverable, rethrow
-          }
-          existingUser = await this.prisma.user.update({
-            where: { id: existingUser.id },
-            data: { token: otpCode, tokenExpiry: expiresAt },
-          });
-          this.logger.log(`Fallback: updated OTP token on existing user ${existingUser.id}`);
-        } else {
-          throw createErr;
-        }
-      }
-    } else {
-      // Update existing user with new token and tokenExpiry
-      existingUser = await this.prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          token: otpCode,
-          tokenExpiry: expiresAt,
-        }
-      });
-      this.logger.log(`Updated OTP token on existing user ${receiverId} (${existingUser.id})`);
-    }
+    // Upsert user by phone (phone is @unique in schema).
+    // NOTE: Do NOT set email here — MongoDB unique index treats null as a real value,
+    // meaning only ONE document can have email=null. Omitting email avoids the conflict.
+    existingUser = await this.prisma.user.upsert({
+      where: { phone: receiverId },
+      create: {
+        phone: receiverId,
+        role: role || 'customer',
+        token: otpCode,
+        tokenExpiry: expiresAt,
+        isNew: true,
+        name: 'User',
+      },
+      update: {
+        token: otpCode,
+        tokenExpiry: expiresAt,
+      },
+    });
+    this.logger.log(`Upserted user for ${receiverId} (id: ${existingUser.id})`);
 
     const message = `Your MLX DIRECT verification OTP is: ${otpCode}. Valid for 5 minutes. Please do not share this OTP with anyone.`;
     const sent = await this.sendWhatsAppMessage(receiverId, message);
