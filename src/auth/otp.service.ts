@@ -114,17 +114,38 @@ export class OtpService {
 
     // If user does not exist, create new user with isNew = true
     if (!existingUser) {
-      existingUser = await this.prisma.user.create({
-        data: {
-          phone: receiverId,
-          role: role || 'customer',
-          token: otpCode,
-          tokenExpiry: expiresAt,
-          isNew: true,
-          name: 'User',
+      try {
+        existingUser = await this.prisma.user.create({
+          data: {
+            phone: receiverId,
+            email: null,
+            role: role || 'customer',
+            token: otpCode,
+            tokenExpiry: expiresAt,
+            isNew: true,
+            name: 'User',
+          }
+        });
+        this.logger.log(`Created new user stub for ${receiverId} with isNew=true`);
+      } catch (createErr: any) {
+        // P2002 = unique constraint violation (e.g. race condition or phone format mismatch)
+        if (createErr?.code === 'P2002') {
+          this.logger.warn(`User create failed (unique constraint) for ${receiverId}, attempting findFirst fallback`);
+          existingUser = await this.prisma.user.findFirst({
+            where: { OR: [{ phone: receiverId }, { phone: { in: phoneVariants } }] }
+          });
+          if (!existingUser) {
+            throw createErr; // truly unrecoverable, rethrow
+          }
+          existingUser = await this.prisma.user.update({
+            where: { id: existingUser.id },
+            data: { token: otpCode, tokenExpiry: expiresAt },
+          });
+          this.logger.log(`Fallback: updated OTP token on existing user ${existingUser.id}`);
+        } else {
+          throw createErr;
         }
-      });
-      this.logger.log(`Created new user stub for ${receiverId} with isNew=true`);
+      }
     } else {
       // Update existing user with new token and tokenExpiry
       existingUser = await this.prisma.user.update({
