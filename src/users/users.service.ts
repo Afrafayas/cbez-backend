@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { formatUserModel } from '../shops/shop-profile.helper';
+import { formatUserModel, stripPlaceholderEmail } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class UsersService {
@@ -72,7 +72,7 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    if (dto.email && dto.email !== existing.email) {
+    if (dto.email && dto.email !== stripPlaceholderEmail(existing.email)) {
       const emailTaken = await this.prisma.user.findUnique({ where: { email: dto.email } });
       if (emailTaken) {
         throw new BadRequestException('Email address is already in use');

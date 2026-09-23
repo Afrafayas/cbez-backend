@@ -159,9 +159,18 @@ export function formatShopModel(shop: any, currentProductsCount?: number, fallba
   };
 }
 
+// Strip internal placeholder email used to avoid MongoDB null-unique collision
+export function stripPlaceholderEmail(email: string | null | undefined): string | null {
+  if (!email) return null;
+  if (email.startsWith('noemail_') && email.endsWith('@placeholder.cbez')) return null;
+  return email;
+}
+
 export function formatUserModel(user: any) {
   if (!user) return null;
   const { password, token, tokenExpiry, ...userWithoutPassword } = user;
+  // Replace placeholder email with null so it never leaks to the frontend
+  userWithoutPassword.email = stripPlaceholderEmail(userWithoutPassword.email);
   const formattedShop = user.shop
     ? formatShopModel(
         {
