@@ -18,6 +18,7 @@ import { NetworkModule } from './network/network.module';
 import { LocationModule } from './location/location.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UploadModule } from './upload/upload.module';
+import { BannersModule } from './banners/banners.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { UploadModule } from './upload/upload.module';
     LocationModule,
     SubscriptionsModule,
     UploadModule,
+    BannersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

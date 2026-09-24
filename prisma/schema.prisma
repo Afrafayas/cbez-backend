@@ -64,6 +64,7 @@ model Shop {
   leads     Lead[]
   followers Follow[]
   subscription ShopSubscription?
+  banners   Banner[]
 }
 
 model Product {
@@ -198,4 +199,19 @@ model Wishlist {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+}
+
+model Banner {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  details   String?
+  image     String
+  type      String    // "ads" | "banner"
+  shopId    String?   @db.ObjectId
+  shop      Shop?     @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  isActive  Boolean   @default(true)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
