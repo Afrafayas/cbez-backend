@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "cbez-banners-api-v1",
     "name": "Cbez - Banners & Ads API",
-    "description": "Postman Collection for Cbez B2C Banner & Ads Management Module",
+    "description": "Postman Collection for Cbez B2C Banner & Ads Management Module (with complete Request Bodies and Example Responses)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,17 +13,17 @@
     },
     {
       "key": "adminToken",
-      "value": "YOUR_ADMIN_JWT_TOKEN_HERE",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YWExNjkxOTc3MGNhZTVhODFmMjJlYzgiLCJpZGVudGlmaWVyIjoiU3VwZXJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc5MDI0NTk5NSwiZXhwIjoxNzkwODUwNzk1fQ.nU44UVEEJlIKrb1wcC28EJGxShN9ibgt24ZDx2r_hwU",
       "type": "string"
     },
     {
       "key": "bannerId",
-      "value": "REPLACE_WITH_BANNER_ID",
+      "value": "6ab50066abeae9663d627d1b",
       "type": "string"
     },
     {
       "key": "shopId",
-      "value": "REPLACE_WITH_SHOP_ID",
+      "value": "6aa023ceb3164ff732324cc8",
       "type": "string"
     }
   ],
@@ -35,14 +35,8 @@
         "header": [],
         "url": {
           "raw": "{{baseUrl}}/api/banners/active",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners",
-            "active"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners", "active"],
           "query": [
             {
               "key": "type",
@@ -54,7 +48,27 @@
         },
         "description": "Public endpoint to fetch active, non-deleted banners for customer website."
       },
-      "response": []
+      "response": [
+        {
+          "name": "200 OK - Active Banners List",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners", "active"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [\n    {\n      \"id\": \"6ab500ccabeae9663d627d1c\",\n      \"title\": \"Exclusive Deals at Mlx Kozhikode\",\n      \"details\": \"iPhones starting from ₹32,000 with warranty\",\n      \"image\": \"https://images.unsplash.com/photo-1592899677977-9c10ca588bbd\",\n      \"type\": \"ads\",\n      \"shopId\": \"6aa023ceb3164ff732324cc8\",\n      \"isActive\": true,\n      \"isDeleted\": false,\n      \"deletedAt\": null,\n      \"createdAt\": \"2026-09-24T10:51:56.900Z\",\n      \"updatedAt\": \"2026-09-24T10:51:56.900Z\",\n      \"shop\": {\n        \"id\": \"6aa023ceb3164ff732324cc8\",\n        \"name\": \"Mlx Kozhikode\",\n        \"phone\": \"+91 9876543210\",\n        \"whatsapp\": \"+91 9876543210\",\n        \"city\": \"Kozhikode\",\n        \"district\": \"Kozhikode\",\n        \"profileImage\": null\n      }\n    },\n    {\n      \"id\": \"6ab50066abeae9663d627d1b\",\n      \"title\": \"Mega Festive Offer 2026\",\n      \"details\": \"Special discounts and offers across all verified stores\",\n      \"image\": \"https://images.unsplash.com/photo-1511707171634-5f897ff02560\",\n      \"type\": \"banner\",\n      \"shopId\": null,\n      \"isActive\": true,\n      \"isDeleted\": false,\n      \"deletedAt\": null,\n      \"createdAt\": \"2026-09-24T10:50:14.936Z\",\n      \"updatedAt\": \"2026-09-24T10:50:14.936Z\",\n      \"shop\": null\n    }\n  ]\n}"
+        }
+      ]
     },
     {
       "name": "2. Admin - Get All Banners",
@@ -69,13 +83,8 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/banners",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners"
-          ],
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners"],
           "query": [
             {
               "key": "type",
@@ -93,7 +102,29 @@
         },
         "description": "Admin endpoint to list all banners with optional filtering."
       },
-      "response": []
+      "response": [
+        {
+          "name": "200 OK - All Banners for Admin",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/banners",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [\n    {\n      \"id\": \"6ab500ccabeae9663d627d1c\",\n      \"title\": \"Exclusive Deals at Mlx Kozhikode\",\n      \"details\": \"iPhones starting from ₹32,000 with warranty\",\n      \"image\": \"https://images.unsplash.com/photo-1592899677977-9c10ca588bbd\",\n      \"type\": \"ads\",\n      \"shopId\": \"6aa023ceb3164ff732324cc8\",\n      \"isActive\": true,\n      \"isDeleted\": false,\n      \"createdAt\": \"2026-09-24T10:51:56.900Z\"\n    }\n  ]\n}"
+        }
+      ]
     },
     {
       "name": "3. Admin - Get Banner By ID",
@@ -108,18 +139,34 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners",
-            "{{bannerId}}"
-          ]
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners", "{{bannerId}}"]
         },
         "description": "Admin endpoint to retrieve a single banner details by ID."
       },
-      "response": []
+      "response": [
+        {
+          "name": "200 OK - Banner Details",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners", "{{bannerId}}"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": \"6ab50066abeae9663d627d1b\",\n    \"title\": \"Mega Festive Offer 2026\",\n    \"details\": \"Special discounts and offers across all verified stores\",\n    \"image\": \"https://images.unsplash.com/photo-1511707171634-5f897ff02560\",\n    \"type\": \"banner\",\n    \"shopId\": null,\n    \"shop\": null,\n    \"isActive\": true,\n    \"isDeleted\": false,\n    \"deletedAt\": null,\n    \"createdAt\": \"2026-09-24T10:50:14.936Z\",\n    \"updatedAt\": \"2026-09-24T10:50:14.936Z\"\n  }\n}"
+        }
+      ]
     },
     {
       "name": "4. Admin - Create Platform Banner",
@@ -147,17 +194,39 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/banners",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners"
-          ]
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners"]
         },
         "description": "Create a platform-level banner (shopId will be null)."
       },
-      "response": []
+      "response": [
+        {
+          "name": "201 Created - Platform Banner",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mega Festive Offer 2026\",\n  \"details\": \"Special discounts and offers across all verified stores\",\n  \"image\": \"https://images.unsplash.com/photo-1511707171634-5f897ff02560\",\n  \"type\": \"banner\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banners",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners"]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Banner created successfully\",\n  \"data\": {\n    \"id\": \"6ab50066abeae9663d627d1b\",\n    \"title\": \"Mega Festive Offer 2026\",\n    \"details\": \"Special discounts and offers across all verified stores\",\n    \"image\": \"https://images.unsplash.com/photo-1511707171634-5f897ff02560\",\n    \"type\": \"banner\",\n    \"shopId\": null,\n    \"shop\": null,\n    \"isActive\": true,\n    \"isDeleted\": false,\n    \"deletedAt\": null,\n    \"createdAt\": \"2026-09-24T10:50:14.936Z\",\n    \"updatedAt\": \"2026-09-24T10:50:14.936Z\"\n  }\n}"
+        }
+      ]
     },
     {
       "name": "5. Admin - Create Shop Ad",
@@ -176,7 +245,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"title\": \"Certified iPhones at Rahul Mobiles\",\n  \"details\": \"iPhone 13 & 14 starting at ₹32,000 with 6-month warranty\",\n  \"image\": \"https://images.unsplash.com/photo-1592899677977-9c10ca588bbd\",\n  \"type\": \"ads\",\n  \"shopId\": \"{{shopId}}\",\n  \"isActive\": true\n}",
+          "raw": "{\n  \"title\": \"Certified iPhones at Mlx Kozhikode\",\n  \"details\": \"iPhone 13 & 14 starting at ₹32,000 with 6-month warranty\",\n  \"image\": \"https://images.unsplash.com/photo-1592899677977-9c10ca588bbd\",\n  \"type\": \"ads\",\n  \"shopId\": \"{{shopId}}\",\n  \"isActive\": true\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -185,17 +254,39 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/banners",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners"
-          ]
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners"]
         },
         "description": "Create a shop ad banner (shopId is mandatory)."
       },
-      "response": []
+      "response": [
+        {
+          "name": "201 Created - Shop Ad Banner",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Certified iPhones at Mlx Kozhikode\",\n  \"details\": \"iPhone 13 & 14 starting at ₹32,000 with 6-month warranty\",\n  \"image\": \"https://images.unsplash.com/photo-1592899677977-9c10ca588bbd\",\n  \"type\": \"ads\",\n  \"shopId\": \"6aa023ceb3164ff732324cc8\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banners",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners"]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Banner created successfully\",\n  \"data\": {\n    \"id\": \"6ab500ccabeae9663d627d1c\",\n    \"title\": \"Certified iPhones at Mlx Kozhikode\",\n    \"details\": \"iPhone 13 & 14 starting at ₹32,000 with 6-month warranty\",\n    \"image\": \"https://images.unsplash.com/photo-1592899677977-9c10ca588bbd\",\n    \"type\": \"ads\",\n    \"shopId\": \"6aa023ceb3164ff732324cc8\",\n    \"isActive\": true,\n    \"isDeleted\": false,\n    \"deletedAt\": null,\n    \"createdAt\": \"2026-09-24T10:51:56.900Z\",\n    \"updatedAt\": \"2026-09-24T10:51:56.900Z\",\n    \"shop\": {\n      \"id\": \"6aa023ceb3164ff732324cc8\",\n      \"name\": \"Mlx Kozhikode\",\n      \"phone\": \"+91 9876543210\",\n      \"city\": \"Kozhikode\"\n    }\n  }\n}"
+        }
+      ]
     },
     {
       "name": "6. Admin - Update Banner (PUT)",
@@ -223,18 +314,39 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners",
-            "{{bannerId}}"
-          ]
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners", "{{bannerId}}"]
         },
         "description": "Full or partial update of banner via PUT."
       },
-      "response": []
+      "response": [
+        {
+          "name": "200 OK - Banner Updated via PUT",
+          "originalRequest": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Banner Title\",\n  \"details\": \"Updated offer details and text\",\n  \"image\": \"https://images.unsplash.com/photo-1511707171634-5f897ff02560\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners", "{{bannerId}}"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Banner updated successfully\",\n  \"data\": {\n    \"id\": \"6ab50066abeae9663d627d1b\",\n    \"title\": \"Updated Banner Title\",\n    \"details\": \"Updated offer details and text\",\n    \"image\": \"https://images.unsplash.com/photo-1511707171634-5f897ff02560\",\n    \"type\": \"banner\",\n    \"shopId\": null,\n    \"isActive\": true\n  }\n}"
+        }
+      ]
     },
     {
       "name": "7. Admin - Update Banner (PATCH)",
@@ -262,18 +374,39 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners",
-            "{{bannerId}}"
-          ]
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners", "{{bannerId}}"]
         },
         "description": "Partial update of banner fields via PATCH."
       },
-      "response": []
+      "response": [
+        {
+          "name": "200 OK - Banner Patched",
+          "originalRequest": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Quick Patched Title\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners", "{{bannerId}}"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Banner updated successfully\",\n  \"data\": {\n    \"id\": \"6ab50066abeae9663d627d1b\",\n    \"title\": \"Quick Patched Title\",\n    \"type\": \"banner\",\n    \"isActive\": true\n  }\n}"
+        }
+      ]
     },
     {
       "name": "8. Admin - Toggle Status (ON/OFF)",
@@ -301,19 +434,39 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/banners/{{bannerId}}/status",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners",
-            "{{bannerId}}",
-            "status"
-          ]
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners", "{{bannerId}}", "status"]
         },
         "description": "Toggle active/inactive status without altering other banner details."
       },
-      "response": []
+      "response": [
+        {
+          "name": "200 OK - Status Toggled",
+          "originalRequest": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/{{bannerId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners", "{{bannerId}}", "status"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Banner deactivated successfully\",\n  \"data\": {\n    \"id\": \"6ab50066abeae9663d627d1b\",\n    \"isActive\": false\n  }\n}"
+        }
+      ]
     },
     {
       "name": "9. Admin - Delete Banner (Soft Delete)",
@@ -328,18 +481,34 @@
         ],
         "url": {
           "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "api",
-            "banners",
-            "{{bannerId}}"
-          ]
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "banners", "{{bannerId}}"]
         },
         "description": "Soft delete a banner so it is excluded from public queries."
       },
-      "response": []
+      "response": [
+        {
+          "name": "200 OK - Banner Deleted",
+          "originalRequest": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/banners/{{bannerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "banners", "{{bannerId}}"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" }
+          ],
+          "body": "{\n  \"success\": true,\n  \"message\": \"Banner deleted successfully\"\n}"
+        }
+      ]
     }
   ]
 }
