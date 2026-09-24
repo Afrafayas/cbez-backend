@@ -8,13 +8,21 @@ import { BannerFilterDto } from './dto/banner-filter.dto';
 export class BannersService {
   constructor(private prisma: PrismaService) {}
 
+  private isValidObjectId(id: string): boolean {
+    return /^[0-9a-fA-F]{24}$/.test((id || '').trim());
+  }
+
   async create(dto: CreateBannerDto) {
     if (dto.type === 'ads') {
-      if (!dto.shopId || !dto.shopId.trim()) {
+      const cleanShopId = (dto.shopId || '').trim();
+      if (!cleanShopId) {
         throw new BadRequestException('shopId is mandatory for ads type');
       }
+      if (!this.isValidObjectId(cleanShopId)) {
+        throw new NotFoundException('Shop with specified ID does not exist');
+      }
       const shop = await this.prisma.shop.findUnique({
-        where: { id: dto.shopId.trim() },
+        where: { id: cleanShopId },
       });
       if (!shop) {
         throw new NotFoundException('Shop with specified ID does not exist');
@@ -31,7 +39,7 @@ export class BannersService {
         details: dto.details?.trim() || null,
         image: dto.image.trim(),
         type: dto.type,
-        shopId: dto.type === 'ads' ? dto.shopId?.trim() : null,
+        shopId: dto.type === 'ads' ? (dto.shopId || '').trim() : null,
         isActive: dto.isActive !== undefined ? dto.isActive : true,
       },
       include: {
@@ -57,8 +65,13 @@ export class BannersService {
   }
 
   async update(id: string, dto: UpdateBannerDto) {
+    const cleanId = (id || '').trim();
+    if (!this.isValidObjectId(cleanId)) {
+      throw new NotFoundException(`Banner with ID ${id} not found`);
+    }
+
     const existing = await this.prisma.banner.findFirst({
-      where: { id, isDeleted: false },
+      where: { id: cleanId, isDeleted: false },
     });
 
     if (!existing) {
@@ -121,8 +134,13 @@ export class BannersService {
   }
 
   async toggleStatus(id: string, isActive: boolean) {
+    const cleanId = (id || '').trim();
+    if (!this.isValidObjectId(cleanId)) {
+      throw new NotFoundException(`Banner with ID ${id} not found`);
+    }
+
     const existing = await this.prisma.banner.findFirst({
-      where: { id, isDeleted: false },
+      where: { id: cleanId, isDeleted: false },
     });
 
     if (!existing) {
@@ -130,7 +148,7 @@ export class BannersService {
     }
 
     const updated = await this.prisma.banner.update({
-      where: { id },
+      where: { id: cleanId },
       data: { isActive },
       include: {
         shop: {
@@ -155,8 +173,13 @@ export class BannersService {
   }
 
   async remove(id: string) {
+    const cleanId = (id || '').trim();
+    if (!this.isValidObjectId(cleanId)) {
+      throw new NotFoundException(`Banner with ID ${id} not found`);
+    }
+
     const existing = await this.prisma.banner.findFirst({
-      where: { id, isDeleted: false },
+      where: { id: cleanId, isDeleted: false },
     });
 
     if (!existing) {
@@ -164,7 +187,7 @@ export class BannersService {
     }
 
     await this.prisma.banner.update({
-      where: { id },
+      where: { id: cleanId },
       data: {
         isDeleted: true,
         isActive: false,
@@ -252,8 +275,13 @@ export class BannersService {
   }
 
   async findOne(id: string) {
+    const cleanId = (id || '').trim();
+    if (!this.isValidObjectId(cleanId)) {
+      throw new NotFoundException(`Banner with ID ${id} not found`);
+    }
+
     const banner = await this.prisma.banner.findFirst({
-      where: { id, isDeleted: false },
+      where: { id: cleanId, isDeleted: false },
       include: {
         shop: {
           select: {
