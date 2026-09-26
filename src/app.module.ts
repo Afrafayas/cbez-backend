@@ -19,6 +19,7 @@ import { LocationModule } from './location/location.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UploadModule } from './upload/upload.module';
 import { BannersModule } from './banners/banners.module';
+import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { BannersModule } from './banners/banners.module';
     SubscriptionsModule,
     UploadModule,
     BannersModule,
+    TransactionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
