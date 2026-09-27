@@ -1,3 +1,4 @@
+import { UploadService } from '../upload/upload.service';
 ﻿import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
@@ -11,6 +12,7 @@ export class ProductsService {
     private prisma: PrismaService,
     private activityLogsService: ActivityLogsService,
     private subscriptionsService: SubscriptionsService,
+    private uploadService: UploadService,
   ) { }
 
   async create(sellerUserId: string, dto: CreateProductDto) {
@@ -96,6 +98,10 @@ export class ProductsService {
       }
     } else {
       Object.assign(sanitizedSpecs, dto.specs || {});
+    }
+
+        if (dto.images && Array.isArray(dto.images) && dto.images.length > 0) {
+      dto.images = await Promise.all(dto.images.map(img => this.uploadService.uploadBase64Image(img, 'products')));
     }
 
     const product = await this.prisma.product.create({
@@ -450,6 +456,9 @@ export class ProductsService {
       updateData.conditionJson = JSON.stringify(dto.conditionInfo);
     }
     if (dto.images !== undefined) {
+      if (Array.isArray(dto.images) && dto.images.length > 0) {
+        dto.images = await Promise.all(dto.images.map(img => this.uploadService.uploadBase64Image(img, 'products')));
+      }
       updateData.imagesJson = JSON.stringify(dto.images);
     }
 

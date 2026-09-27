@@ -1,3 +1,4 @@
+import { UploadService } from '../upload/upload.service';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
@@ -11,6 +12,7 @@ export class ShopsService {
     private prisma: PrismaService,
     private activityLogsService: ActivityLogsService,
     private subscriptionsService: SubscriptionsService,
+    private uploadService: UploadService,
   ) { }
 
   private readonly shopInclude = {
@@ -37,6 +39,9 @@ export class ShopsService {
     });
 
     const data: any = { ...dto };
+    if (data.profileImage && typeof data.profileImage === 'string') {
+      data.profileImage = await this.uploadService.uploadBase64Image(data.profileImage, 'shops');
+    }
     if (data.latitude !== undefined) {
       data.latitude = data.latitude !== null && !isNaN(Number(data.latitude)) ? Number(data.latitude) : null;
     }
