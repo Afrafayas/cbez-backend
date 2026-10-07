@@ -169,6 +169,79 @@ export class LocationService {
   }
 
   /**
+   * Location autocomplete predictions for a search query
+   */
+  async autocomplete(q?: string) {
+    if (!q || !q.trim()) {
+      return { success: true, predictions: [] };
+    }
+
+    const query = q.trim();
+
+    // 1. Google Places Autocomplete API if API key is provided
+    if (this.apiKey && this.apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY') {
+      try {
+        const googleUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:in&key=${this.apiKey}`;
+        const res = await fetch(googleUrl);
+        const data = await res.json();
+        if (data.status === 'OK' && Array.isArray(data.predictions)) {
+          const predictions = data.predictions.map((item: any) => ({
+            placeId: item.place_id,
+            description: item.description,
+            mainText: item.structured_formatting?.main_text || item.description,
+            secondaryText: item.structured_formatting?.secondary_text || '',
+          }));
+          return { success: true, predictions };
+        }
+      } catch (error) {
+        // Fallback to OpenStreetMap below
+      }
+    }
+
+    // 2. OpenStreetMap Nominatim API (Free, called safely from backend without CORS restrictions)
+    try {
+      const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&addressdetails=1&limit=8`;
+      const response = await fetch(nomUrl, {
+        headers: { 'User-Agent': 'CbezBackend/1.0' },
+      });
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        const predictions = data.map((item: any) => {
+          const addr = item.address || {};
+          const mainText =
+            addr.shop ||
+            addr.amenity ||
+            addr.building ||
+            addr.suburb ||
+            addr.neighbourhood ||
+            addr.city ||
+            addr.town ||
+            addr.village ||
+            item.display_name.split(',')[0];
+          const secParts = [addr.county, addr.state_district, addr.state, 'India'].filter(Boolean);
+          const secondaryText = Array.from(new Set(secParts)).join(', ');
+
+          return {
+            placeId: String(item.place_id || item.osm_id),
+            description: item.display_name,
+            mainText: mainText || item.display_name,
+            secondaryText: secondaryText || '',
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+          };
+        });
+
+        return { success: true, predictions };
+      }
+    } catch (error) {
+      // Return empty predictions on error
+    }
+
+    return { success: true, predictions: [] };
+  }
+
+  /**
    * Calculate distance in kilometers between two coordinates using Haversine Formula
    */
   private calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
