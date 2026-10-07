@@ -232,25 +232,7 @@ export class AuthService {
       });
     }
 
-    // Assign chosen subscription plan to shop
-    if (user.shop && dto.subscriptionPlanId) {
-      try {
-        const sub = await this.prisma.shopSubscription.upsert({
-          where: { shopId: user.shop.id },
-          create: {
-            shopId: user.shop.id,
-            planId: dto.subscriptionPlanId,
-          },
-          update: {
-            planId: dto.subscriptionPlanId,
-          },
-          include: { plan: true },
-        });
-        (user.shop as any).subscription = sub;
-      } catch (err) {
-        console.warn('Subscription assignment during registration fallback:', err);
-      }
-    }
+    // Do not auto-assign subscription plan during registration; plan must be assigned by Admin upon approval
 
     const token = this.generateToken(user.id, user.email || user.phone || user.id, user.role);
 

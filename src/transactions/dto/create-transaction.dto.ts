@@ -32,5 +32,13 @@ export class CreateTransactionDto {
 
   @IsOptional()
   @IsString()
+  transactionMode?: string;
+
+  @IsOptional()
+  @IsString()
+  transactionId?: string;
+
+  @IsOptional()
+  @IsString()
   notes?: string;
 }

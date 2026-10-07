@@ -54,18 +54,24 @@ export class OtpService {
   }
 
   async sendWhatsAppMessage(receiverId: string, message: string): Promise<boolean> {
-    const url = `${this.whatsappApiUrl}?action=send&senderId=${this.senderId}&authToken=${this.authToken}&receiverId=${receiverId}&messageText=${encodeURIComponent(message)}`;
+    const rawDigits = (receiverId || '').replace(/\D/g, '');
+    if (!rawDigits) return false;
+    let formattedReceiver = rawDigits;
+    if (formattedReceiver.length === 10) {
+      formattedReceiver = `91${formattedReceiver}`;
+    }
+    const url = `${this.whatsappApiUrl}?action=send&senderId=${this.senderId}&authToken=${this.authToken}&receiverId=${formattedReceiver}&messageText=${encodeURIComponent(message)}`;
     try {
       const response = await fetch(url);
       const data = await response.json();
       if (!response.ok || data.success === false) {
-        this.logger.error(`WhatsApp API error: ${JSON.stringify(data)}`);
+        this.logger.error(`WhatsApp API error for ${formattedReceiver}: ${JSON.stringify(data)}`);
         return false;
       }
-      this.logger.log(`WhatsApp message queued for ${receiverId}: ${JSON.stringify(data)}`);
+      this.logger.log(`WhatsApp message queued for ${formattedReceiver}: ${JSON.stringify(data)}`);
       return true;
     } catch (err: any) {
-      this.logger.error(`Failed to send WhatsApp message to ${receiverId}: ${err.message}`);
+      this.logger.error(`Failed to send WhatsApp message to ${formattedReceiver}: ${err.message}`);
       return false;
     }
   }
@@ -78,6 +84,7 @@ export class OtpService {
     requiresRegistration: boolean;
     phone: string;
     role: string;
+    user?: any;
     devOtp?: string;
   }> {
     if (!phone || !phone.trim()) {
@@ -102,6 +109,14 @@ export class OtpService {
           { phone: { in: phoneVariants } },
         ],
       },
+      include: {
+        shop: {
+          include: {
+            subscription: { include: { plan: true } },
+            _count: { select: { products: true } },
+          },
+        },
+      },
     });
 
     const isExistingUser = Boolean(existingUser);
@@ -120,11 +135,10 @@ export class OtpService {
         );
       }
 
-      // Role and mobile number match: update OTP token, expiry, and ensure isNew=false
+      // Role and mobile number match: update OTP token, expiry
       const updateData: any = {
         token: otpCode,
         tokenExpiry: expiresAt,
-        isNew: false,
       };
 
       // Keep DB phone synced to user input without forcing 91
@@ -140,22 +154,99 @@ export class OtpService {
       existingUser = await this.prisma.user.update({
         where: { id: existingUser.id },
         data: updateData,
+        include: {
+          shop: {
+            include: {
+              subscription: { include: { plan: true } },
+              _count: { select: { products: true } },
+            },
+          },
+        },
       });
+
+      // If seller exists but doesn't have a shop, create it now!
+      if (targetRole === 'seller' && !existingUser.shop) {
+        const newShop = await this.prisma.shop.create({
+          data: {
+            name: 'New Shop',
+            ownerName: existingUser.name || 'Seller',
+            phone: existingUser.phone || rawClean,
+            whatsapp: existingUser.phone || rawClean,
+            address: '',
+            city: 'Ernakulam',
+            district: 'Ernakulam',
+            country: 'India',
+            category: 'Mobiles & Tablets',
+            verified: false,
+            ownerId: existingUser.id,
+          },
+          include: {
+            subscription: { include: { plan: true } },
+            _count: { select: { products: true } },
+          },
+        });
+        existingUser.shop = newShop;
+      }
 
       this.logger.log(`Updated OTP token for existing ${existingUser.role} user: ${rawClean} (id: ${existingUser.id})`);
     } else {
-      // Mobile number does not exist: create / register it as a new user with the role provided
-      existingUser = await this.prisma.user.create({
-        data: {
-          phone: rawClean,
-          name: targetRole === 'seller' ? 'Seller' : 'Customer',
-          role: targetRole,
-          token: otpCode,
-          tokenExpiry: expiresAt,
-          isNew: true,
-        },
-      });
-      this.logger.log(`Created new ${targetRole} user during Send OTP: ${rawClean} (id: ${existingUser.id})`);
+      // User does not exist: create user and associated shop if seller, or user for customer
+      if (targetRole === 'seller') {
+        existingUser = await this.prisma.user.create({
+          data: {
+            phone: rawClean,
+            name: 'Seller',
+            role: 'seller',
+            token: otpCode,
+            tokenExpiry: expiresAt,
+            isNew: true,
+            shop: {
+              create: {
+                name: 'New Shop',
+                ownerName: 'Seller',
+                phone: rawClean,
+                whatsapp: rawClean,
+                address: '',
+                city: 'Ernakulam',
+                district: 'Ernakulam',
+                country: 'India',
+                category: 'Mobiles & Tablets',
+                verified: false,
+              },
+            },
+          },
+          include: {
+            shop: {
+              include: {
+                subscription: { include: { plan: true } },
+                _count: { select: { products: true } },
+              },
+            },
+          },
+        });
+        this.logger.log(`Created new seller user and shop during Send OTP: ${rawClean} (user id: ${existingUser.id}, shop id: ${existingUser.shop?.id})`);
+      } else {
+        // Customer
+        existingUser = await this.prisma.user.create({
+          data: {
+            phone: rawClean,
+            name: 'Customer',
+            role: 'customer',
+            token: otpCode,
+            tokenExpiry: expiresAt,
+            isNew: true,
+          },
+          include: {
+            shop: {
+              include: {
+                subscription: { include: { plan: true } },
+                _count: { select: { products: true } },
+              },
+            },
+          },
+        });
+        this.logger.log(`Created new customer user during Send OTP: ${rawClean} (id: ${existingUser.id})`);
+      }
     }
 
     // In-memory store for resilience
@@ -183,14 +274,24 @@ export class OtpService {
       this.logger.warn(`WhatsApp send failed for ${whatsappReceiverId}, OTP stored in DB & memory.`);
     }
 
+    const requiresReg = Boolean(existingUser.isNew);
+
     return {
       success: true,
       message: sent ? 'OTP sent successfully to your WhatsApp number' : 'OTP generated (WhatsApp delivery in progress)',
       isExistingUser,
-      isNewUser,
-      requiresRegistration: isNewUser,
+      isNewUser: requiresReg,
+      requiresRegistration: requiresReg,
       phone: existingUser.phone || rawClean,
       role: existingUser.role,
+      user: {
+        id: existingUser.id,
+        name: existingUser.name,
+        phone: existingUser.phone,
+        role: existingUser.role,
+        isNew: existingUser.isNew,
+        ...(existingUser.shop ? { shopId: existingUser.shop.id, shop: existingUser.shop } : {}),
+      },
       ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
     };
   }

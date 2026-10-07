@@ -49,8 +49,12 @@ export class ShopsController {
   }
 
   @Patch(':id/verify')
-  async toggleVerify(@Param('id') id: string, @Body('verified') verified?: boolean) {
-    return this.shopsService.toggleVerify(id, verified);
+  async toggleVerify(
+    @Param('id') id: string,
+    @Body('verified') verified?: boolean,
+    @Body() body?: any,
+  ) {
+    return this.shopsService.toggleVerify(id, verified, body);
   }
 
   @Put(':id')

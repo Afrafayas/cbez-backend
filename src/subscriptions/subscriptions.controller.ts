@@ -68,4 +68,10 @@ export class SubscriptionsController {
   getShopSubscription(@Param('shopId') shopId: string) {
     return this.subscriptionsService.getShopSubscription(shopId);
   }
+
+  @Post('trigger-expiry-alerts')
+  @UseGuards(AuthGuard('jwt'), AdminGuard)
+  triggerExpiryAlerts() {
+    return this.subscriptionsService.processExpiringSubscriptionAlerts();
+  }
 }
