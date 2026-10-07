@@ -175,6 +175,7 @@ model SubscriptionPlan {
 
   subscriptions ShopSubscription[]
   transactions Transaction[]
+  
 }
 
 model ShopSubscription {
@@ -217,20 +218,21 @@ model Banner {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
-
 model Transaction {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   
+  // Shop Relation
   shopId        String   @db.ObjectId
   shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
+  // Subscription Plan Relation (Optional)
   planId        String?  @db.ObjectId
   plan          SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
 
-  planName      String?
-  amount        Float
-  paymentStatus String   @default("COMPLETED")
-  type          String   @default("INITIAL_VERIFICATION")
+  planName      String?  // e.g. "Gold Plan", "Basic Plan"
+  amount        Float    // e.g. 999.0
+  paymentStatus String   @default("COMPLETED") // "COMPLETED" | "PENDING" | "FAILED"
+  type          String   @default("INITIAL_VERIFICATION") // "INITIAL_VERIFICATION" | "PLAN_CHANGE" | "RENEWAL"
   notes         String?
 
   createdAt     DateTime @default(now())

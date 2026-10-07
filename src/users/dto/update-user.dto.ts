@@ -18,6 +18,14 @@ export class UpdateUserDto {
   role?: string;
 
   @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
   @IsNumber()
   latitude?: number;
 

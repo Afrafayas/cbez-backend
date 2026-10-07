@@ -106,13 +106,15 @@ export class UsersService {
       include: this.userInclude,
     });
 
-    // If seller has an associated shop, sync shop coordinates
-    if (user.shop && (updateData.latitude !== undefined || updateData.longitude !== undefined)) {
+    // If seller has an associated shop, sync shop coordinates and address info
+    if (user.shop && (updateData.latitude !== undefined || updateData.longitude !== undefined || dto.city !== undefined || dto.address !== undefined)) {
       await this.prisma.shop.update({
         where: { id: user.shop.id },
         data: {
           ...(updateData.latitude !== undefined ? { latitude: updateData.latitude } : {}),
           ...(updateData.longitude !== undefined ? { longitude: updateData.longitude } : {}),
+          ...(dto.city ? { city: dto.city } : {}),
+          ...(dto.address ? { address: dto.address } : {}),
         },
       });
     }
