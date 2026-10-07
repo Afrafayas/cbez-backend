@@ -239,3 +239,14 @@ model Transaction {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+model MlxDetails {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  platformName String?  @default("MLX Used Gadgets Directory")
+  website      String?  @default("https://mlxmarket.in")
+  supportPhone String?  @default("+91 7902613259")
+  supportEmail String?  @default("support@mlxmarket.in")
+  address      String?  @default("Kochi, Kerala, India")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
