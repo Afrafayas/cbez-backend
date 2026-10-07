@@ -35,7 +35,8 @@ export class AuthController {
       req.ip ||
       null;
     const userAgent = (req.headers?.['user-agent'] as string) || null;
-    return this.authService.register(dto, ipAddress, userAgent);
+    const authHeader = (req.headers?.authorization as string) || null;
+    return this.authService.register(dto, ipAddress, userAgent, authHeader);
   }
 
   @Patch('register')
@@ -46,7 +47,8 @@ export class AuthController {
       req.ip ||
       null;
     const userAgent = (req.headers?.['user-agent'] as string) || null;
-    return this.authService.register(dto, ipAddress, userAgent);
+    const authHeader = (req.headers?.authorization as string) || null;
+    return this.authService.register(dto, ipAddress, userAgent, authHeader);
   }
 
   @Post('register')
@@ -57,7 +59,8 @@ export class AuthController {
       req.ip ||
       null;
     const userAgent = (req.headers?.['user-agent'] as string) || null;
-    return this.authService.register(dto, ipAddress, userAgent);
+    const authHeader = (req.headers?.authorization as string) || null;
+    return this.authService.register(dto, ipAddress, userAgent, authHeader);
   }
 
   @Post('login')
