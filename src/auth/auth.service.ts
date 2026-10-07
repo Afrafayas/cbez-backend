@@ -21,8 +21,8 @@ export class AuthService {
     return this.otpService.sendOtp(phone, role);
   }
 
-  async verifyOtpAndLogin(phone: string, otp: string, role = 'customer', ipAddress?: string | null, userAgent?: string | null) {
-    const { user, last10 } = await this.otpService.verifyOtp(phone, otp, role);
+  async verifyOtpAndLogin(phone: string, otp: string, role?: string, ipAddress?: string | null, userAgent?: string | null) {
+    const { user, phone: userPhone } = await this.otpService.verifyOtp(phone, otp, role);
 
     const token = this.generateToken(user.id, user.email || user.phone || user.id, user.role);
 
@@ -35,28 +35,52 @@ export class AuthService {
     );
 
     const formattedUser = formatUserModel(user);
+    const isNew = Boolean(user.isNew);
 
     return {
       user: formattedUser,
       token,
-      isNewUser: Boolean(user.isNew),
+      isExistingUser: !isNew,
+      isNewUser: isNew,
+      requiresRegistration: isNew,
       success: true,
-      message: 'OTP verified successfully.',
+      message: isNew
+        ? 'OTP verified. Please complete your registration details.'
+        : 'OTP verified successfully.',
       data: {
         user: formattedUser,
         token,
-        phone: user.phone || last10,
+        phone: user.phone || userPhone,
         role: user.role,
+        isExistingUser: !isNew,
+        isNewUser: isNew,
+        requiresRegistration: isNew,
       },
     };
   }
 
-  async register(dto: RegisterDto, ipAddress?: string | null, userAgent?: string | null) {
+  async register(dto: RegisterDto, ipAddress?: string | null, userAgent?: string | null, authHeader?: string | null) {
     const role = dto.role || 'customer';
 
     let hashedPassword: string | null = null;
     if (dto.password && dto.password.trim()) {
       hashedPassword = await bcrypt.hash(dto.password, 10);
+    }
+
+    // If phone not provided in body, attempt to resolve from Bearer token
+    if (!dto.phone && authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const tokenStr = authHeader.substring(7).trim();
+        const decoded: any = this.jwtService.decode(tokenStr);
+        if (decoded?.sub) {
+          const authUser = await this.prisma.user.findUnique({ where: { id: decoded.sub } });
+          if (authUser?.phone) {
+            dto.phone = authUser.phone;
+          }
+        }
+      } catch (err) {
+        // ignore decode failure
+      }
     }
 
     // Only phone is strictly required for user registration
@@ -77,9 +101,14 @@ export class AuthService {
     // Check if user already exists by phone or email
     let existingUser: any = null;
     if (dto.phone) {
-      const { phoneVariants } = this.otpService.sanitizePhone(dto.phone);
+      const { phoneVariants, rawClean } = this.otpService.sanitizePhone(dto.phone);
       existingUser = await this.prisma.user.findFirst({
-        where: { phone: { in: phoneVariants } },
+        where: {
+          OR: [
+            { phone: rawClean },
+            { phone: { in: phoneVariants } },
+          ],
+        },
         include: { shop: true },
       });
     }
@@ -89,6 +118,11 @@ export class AuthService {
         where: { email: dto.email.toLowerCase() },
         include: { shop: true },
       });
+    }
+
+    // If existing user has a different role, prevent conflicting registration
+    if (existingUser && existingUser.role.toLowerCase() !== role.toLowerCase()) {
+      throw new BadRequestException(`This mobile number is registered as a ${existingUser.role}.`);
     }
 
     // Check duplicate email across other users
@@ -180,7 +214,7 @@ export class AuthService {
           email: dto.email ? dto.email.toLowerCase() : null,
           password: hashedPassword,
           name: dto.name || dto.ownerName || dto.shopName || 'User',
-          phone: dto.phone || null,
+          phone: dto.phone ? dto.phone.trim() : null,
           role: role,
           isNew: false,
           latitude: dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null,
@@ -259,15 +293,28 @@ export class AuthService {
         include: { shop: shopInclude },
       });
     } else if (dto.phone) {
-      const { phoneVariants } = this.otpService.sanitizePhone(dto.phone);
+      const { phoneVariants, rawClean } = this.otpService.sanitizePhone(dto.phone);
       user = await this.prisma.user.findFirst({
-        where: { phone: { in: phoneVariants } },
+        where: {
+          OR: [
+            { phone: rawClean },
+            { phone: { in: phoneVariants } },
+          ],
+        },
         include: { shop: shopInclude },
       });
     }
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (dto.role) {
+      const targetRole = dto.role.toLowerCase().trim();
+      const userRole = (user.role || 'customer').toLowerCase().trim();
+      if (userRole !== targetRole) {
+        throw new BadRequestException(`This account is registered as a ${user.role}.`);
+      }
     }
 
     if (!user.password) {
