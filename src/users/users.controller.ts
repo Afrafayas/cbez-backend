@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -19,8 +19,9 @@ export class UsersController {
 
   @UseGuards(AuthGuard('jwt'))
   @Put(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Request() req: any) {
+    const targetId = id === 'me' ? req.user?.id : id;
+    return this.usersService.update(targetId, dto);
   }
 
   @UseGuards(AuthGuard('jwt'))

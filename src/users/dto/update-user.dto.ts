@@ -26,6 +26,10 @@ export class UpdateUserDto {
   address?: string;
 
   @IsOptional()
+  @IsString()
+  password?: string;
+
+  @IsOptional()
   @IsNumber()
   latitude?: number;
 

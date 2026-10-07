@@ -17,6 +17,7 @@ export class ShopsService {
 
   private readonly shopInclude = {
     subscription: { include: { plan: true } },
+    queuedSubscriptions: { include: { plan: true }, where: { status: 'QUEUED' } },
     owner: {
       select: {
         id: true,
@@ -64,6 +65,11 @@ export class ShopsService {
         where: { ownerId },
         data,
         include: this.shopInclude,
+      });
+
+      await this.prisma.user.update({
+        where: { id: ownerId },
+        data: { isNew: false },
       });
 
       await this.activityLogsService.log(ownerId, 'UPDATE_SHOP', `Updated shop profile "${shop.name}"`);
@@ -239,7 +245,7 @@ export class ShopsService {
     };
   }
 
-  async toggleVerify(id: string, verified?: boolean) {
+  async toggleVerify(id: string, verified?: boolean, body?: any) {
     const shop = await this.prisma.shop.findUnique({ where: { id } });
     if (!shop) {
       throw new NotFoundException(`Shop with ID ${id} not found`);
@@ -252,35 +258,40 @@ export class ShopsService {
       include: this.shopInclude,
     });
 
-    if (newStatus) {
-      const existingSub = await this.prisma.shopSubscription.findUnique({ where: { shopId: id } });
-      if (!existingSub) {
-        let starterPlan = await this.prisma.subscriptionPlan.findFirst({
-          where: { status: 'ACTIVE' },
-          orderBy: { productLimit: 'asc' },
-        });
-        if (!starterPlan) {
-          starterPlan = await this.prisma.subscriptionPlan.create({
-            data: { name: 'Free Starter Plan', description: 'Default starter plan for new approved shops', productLimit: 5, status: 'ACTIVE' },
-          });
-        }
-        await this.subscriptionsService.assignPlanToShop({ shopId: id, planId: starterPlan.id });
-      }
+    if (newStatus && body?.planId) {
+      // Admin specified subscription plan and transaction in approval modal
+      await this.subscriptionsService.assignPlanToShop({
+        shopId: id,
+        planId: body.planId,
+        amount: body.amount !== undefined ? Number(body.amount) : undefined,
+        transactionMode: body.transactionMode || 'UPI',
+        transactionId: body.transactionId || null,
+        notes: body.notes || 'Agent registration approval subscription',
+        type: 'INITIAL_VERIFICATION',
+        forceImmediate: true,
+      });
     }
 
     if (shop.ownerId) {
       await this.activityLogsService.log(
         shop.ownerId,
         newStatus ? 'VERIFY_SHOP' : 'UNVERIFY_SHOP',
-        `Shop "${updatedShop.name}" status updated to ${newStatus ? 'Verified' : 'Pending Verification'} by Admin`,
+        `Shop "${updatedShop.name}" status updated to ${newStatus ? 'Verified' : 'Pending Verification'} by Admin${
+          body?.transactionId ? ` (Txn: ${body.transactionId}, Mode: ${body.transactionMode || 'UPI'})` : ''
+        }`,
       );
     }
+
+    const reloadedShop = await this.prisma.shop.findUnique({
+      where: { id },
+      include: this.shopInclude,
+    });
 
     return {
       success: true,
       message: `Shop "${updatedShop.name}" ${newStatus ? 'verified' : 'unverified'} successfully`,
       data: {
-        shop: formatShopModel(updatedShop),
+        shop: formatShopModel(reloadedShop || updatedShop),
       },
     };
   }
@@ -292,6 +303,9 @@ export class ShopsService {
     }
 
     const data: any = { ...dto };
+    if (data.profileImage && typeof data.profileImage === 'string' && data.profileImage.startsWith('data:image')) {
+      data.profileImage = await this.uploadService.uploadBase64Image(data.profileImage, 'shops');
+    }
     if (data.latitude !== undefined) {
       data.latitude = data.latitude !== null && !isNaN(Number(data.latitude)) ? Number(data.latitude) : null;
     }
@@ -299,10 +313,11 @@ export class ShopsService {
       data.longitude = data.longitude !== null && !isNaN(Number(data.longitude)) ? Number(data.longitude) : null;
     }
 
-    if (existing.ownerId && (data.latitude !== undefined || data.longitude !== undefined)) {
+    if (existing.ownerId) {
       await this.prisma.user.update({
         where: { id: existing.ownerId },
         data: {
+          isNew: false,
           ...(data.latitude !== undefined ? { latitude: data.latitude } : {}),
           ...(data.longitude !== undefined ? { longitude: data.longitude } : {}),
         },

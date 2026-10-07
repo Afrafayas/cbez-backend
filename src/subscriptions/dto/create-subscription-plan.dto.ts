@@ -1,4 +1,4 @@
-﻿import { IsString, IsNotEmpty, IsOptional, IsInt, Min, IsIn, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, Min, IsIn, IsNumber } from 'class-validator';
 
 export class CreateSubscriptionPlanDto {
   @IsString()
@@ -12,6 +12,11 @@ export class CreateSubscriptionPlanDto {
   @IsInt()
   @Min(1)
   productLimit: number;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  durationDays?: number = 30;
 
   @IsString()
   @IsOptional()

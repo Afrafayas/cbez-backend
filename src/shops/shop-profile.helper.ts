@@ -93,14 +93,32 @@ export function formatShopModel(shop: any, currentProductsCount?: number, fallba
 
   const isVerified = Boolean(shop.verified);
 
+  const sub = shop.subscription;
+  const now = new Date();
+  const endDate = sub?.endDate ? new Date(sub.endDate) : null;
+  const isExpired = sub ? (sub.status === 'EXPIRED' || (endDate ? endDate <= now : false)) : false;
+  const daysRemaining = endDate ? Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))) : 0;
+  const isExpiringSoon = !isExpired && daysRemaining <= 5 && daysRemaining >= 0 && Boolean(endDate);
+
   const subscriptionUsage = {
     planName: plan ? plan.name : 'None',
     productLimit,
     currentProducts,
     remaining,
     isLimitReached: productLimit > 0 ? currentProducts >= productLimit : false,
-    canAddProduct: Boolean(isVerified && (productLimit > 0 ? currentProducts < productLimit : false)),
+    durationDays: plan?.durationDays || 30,
+    startDate: sub?.startDate || null,
+    endDate: sub?.endDate || null,
+    isExpired,
+    daysRemaining,
+    isExpiringSoon,
+    canAddProduct: Boolean(isVerified && !isExpired && (productLimit > 0 ? currentProducts < productLimit : false)),
     verificationRequired: !isVerified,
+    expirationMessage: isExpired
+      ? 'Your subscription plan has expired. You cannot create new products. Please contact Admin to buy or renew a subscription plan.'
+      : isExpiringSoon
+      ? `Your subscription will expire in ${daysRemaining === 0 ? 'today' : `${daysRemaining} day(s)`}. Please contact Admin to renew.`
+      : null,
   };
 
   const effectiveOwnerEmail = shop.owner?.email || fallbackOwnerEmail || shop.email;
@@ -131,6 +149,7 @@ export function formatShopModel(shop: any, currentProductsCount?: number, fallba
     category: shop.category,
     verified: isVerified,
     isApproved: isVerified,
+    isSubscriptionExpired: isExpired,
     verificationStatus: isVerified ? 'VERIFIED' : 'UNDER_VERIFICATION',
     verificationMessage: isVerified
       ? 'Shop is approved and verified'
@@ -152,6 +171,7 @@ export function formatShopModel(shop: any, currentProductsCount?: number, fallba
     } : undefined,
     subscription: shop.subscription || null,
     subscriptionPlanId: shop.subscription?.planId || null,
+    queuedSubscriptions: shop.queuedSubscriptions || [],
     subscriptionUsage,
     profileCompletion,
     productsCount: currentProducts,

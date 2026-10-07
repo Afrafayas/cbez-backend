@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { formatUserModel, stripPlaceholderEmail } from '../shops/shop-profile.helper';
@@ -91,7 +92,12 @@ export class UsersService {
       ...(dto.email !== undefined && { email: dto.email }),
       ...(dto.phone !== undefined && { phone: dto.phone }),
       ...(dto.role && { role: dto.role }),
+      isNew: false,
     };
+
+    if (dto.password && dto.password.trim()) {
+      updateData.password = await bcrypt.hash(dto.password, 10);
+    }
 
     if (dto.latitude !== undefined) {
       updateData.latitude = dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null;
@@ -106,8 +112,8 @@ export class UsersService {
       include: this.userInclude,
     });
 
-    // If seller has an associated shop, sync shop coordinates and address info
-    if (user.shop && (updateData.latitude !== undefined || updateData.longitude !== undefined || dto.city !== undefined || dto.address !== undefined)) {
+    // If seller has an associated shop, sync shop coordinates, address, and owner name
+    if (user.shop && (updateData.latitude !== undefined || updateData.longitude !== undefined || dto.city !== undefined || dto.address !== undefined || dto.name !== undefined)) {
       await this.prisma.shop.update({
         where: { id: user.shop.id },
         data: {
@@ -115,6 +121,7 @@ export class UsersService {
           ...(updateData.longitude !== undefined ? { longitude: updateData.longitude } : {}),
           ...(dto.city ? { city: dto.city } : {}),
           ...(dto.address ? { address: dto.address } : {}),
+          ...(dto.name ? { ownerName: dto.name } : {}),
         },
       });
     }

@@ -34,6 +34,8 @@ export class TransactionsService {
         amount: Number(dto.amount || 0),
         paymentStatus: dto.paymentStatus || 'COMPLETED',
         type: dto.type || 'INITIAL_VERIFICATION',
+        transactionMode: dto.transactionMode || 'UPI',
+        transactionId: dto.transactionId || null,
         notes: dto.notes || null,
       },
       include: {
@@ -83,6 +85,8 @@ export class TransactionsService {
         { shop: { name: { contains: search, mode: 'insensitive' } } },
         { shop: { ownerName: { contains: search, mode: 'insensitive' } } },
         { planName: { contains: search, mode: 'insensitive' } },
+        { transactionId: { contains: search, mode: 'insensitive' } },
+        { transactionMode: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -188,6 +192,8 @@ export class TransactionsService {
         ...(dto.amount !== undefined && { amount: Number(dto.amount) }),
         ...(dto.paymentStatus !== undefined && { paymentStatus: dto.paymentStatus }),
         ...(dto.type !== undefined && { type: dto.type }),
+        ...(dto.transactionMode !== undefined && { transactionMode: dto.transactionMode }),
+        ...(dto.transactionId !== undefined && { transactionId: dto.transactionId }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
       },
       include: {
