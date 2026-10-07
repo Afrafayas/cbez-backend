@@ -3,10 +3,17 @@ import { LocationService } from './location.service';
 import { GeocodeDto } from './dto/geocode.dto';
 import { ReverseGeocodeDto } from './dto/reverse-geocode.dto';
 import { NearbyShopsDto } from './dto/nearby-shops.dto';
+import { AutocompleteDto } from './dto/autocomplete.dto';
 
 @Controller('location')
 export class LocationController {
   constructor(private readonly locationService: LocationService) {}
+
+  @Get('autocomplete')
+  async autocomplete(@Query() dto: AutocompleteDto) {
+    const query = dto.q || dto.query || dto.input || '';
+    return this.locationService.autocomplete(query);
+  }
 
   @Get('geocode')
   async geocode(@Query() dto: GeocodeDto) {
