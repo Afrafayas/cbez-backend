@@ -20,6 +20,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UploadModule } from './upload/upload.module';
 import { BannersModule } from './banners/banners.module';
 import { TransactionsModule } from './transactions/transactions.module';
+import { MlxDetailsModule } from './mlx-details/mlx-details.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { TransactionsModule } from './transactions/transactions.module';
     UploadModule,
     BannersModule,
     TransactionsModule,
+    MlxDetailsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
