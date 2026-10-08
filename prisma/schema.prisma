@@ -187,11 +187,11 @@ model ShopSubscription {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  shopId                String   @unique @db.ObjectId
-  shop                  Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId                String?  @unique @db.ObjectId
+  shop                  Shop?    @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
-  planId                String   @db.ObjectId
-  plan                  SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  planId                String?  @db.ObjectId
+  plan                  SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   startDate             DateTime? @default(now())
   endDate               DateTime?
@@ -204,11 +204,11 @@ model ShopSubscriptionQueue {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  shopId        String   @db.ObjectId
-  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId        String?  @db.ObjectId
+  shop          Shop?    @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
-  planId        String   @db.ObjectId
-  plan          SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  planId        String?  @db.ObjectId
+  plan          SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   durationDays  Int      @default(30)
   status        String   @default("QUEUED") // "QUEUED" | "ACTIVATED" | "CANCELLED"
@@ -249,8 +249,8 @@ model Transaction {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   
   // Shop Relation
-  shopId          String   @db.ObjectId
-  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId          String?  @db.ObjectId
+  shop            Shop?    @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
   // Subscription Plan Relation (Optional)
   planId          String?  @db.ObjectId

@@ -453,7 +453,7 @@ export class SubscriptionsService implements OnModuleInit {
           isExpired,
           daysRemaining,
           isExpiringSoon,
-          queuedPlan: queuedSub ? {
+          queuedPlan: (queuedSub && queuedSub.plan) ? {
             planName: queuedSub.plan.name,
             durationDays: queuedSub.durationDays,
             status: queuedSub.status,
@@ -594,18 +594,19 @@ export class SubscriptionsService implements OnModuleInit {
           });
 
           queuedActivated++;
+          const planName = queued?.plan?.name || 'Subscription Plan';
           if (sub.shop.ownerId) {
             await this.activityLogsService.log(
               sub.shop.ownerId,
               'AUTO_ACTIVATE_QUEUED_SUBSCRIPTION',
-              `Queued plan "${queued.plan.name}" automatically activated for store "${sub.shop.name}" after existing plan expired`,
+              `Queued plan "${planName}" automatically activated for store "${sub.shop.name}" after existing plan expired`,
             );
           }
 
           if (targetPhone) {
             await this.otpService.sendWhatsAppMessage(
               targetPhone,
-              `Hello ${sub.shop.ownerName || sub.shop.name}, your queued MLX subscription plan "${queued.plan.name}" has been automatically activated! It is valid until ${newEndDate.toLocaleDateString('en-IN')}. Thank you!`,
+              `Hello ${sub.shop.ownerName || sub.shop.name}, your queued MLX subscription plan "${planName}" has been automatically activated! It is valid until ${newEndDate.toLocaleDateString('en-IN')}. Thank you!`,
             );
           }
           continue;
