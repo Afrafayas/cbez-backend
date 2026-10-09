@@ -14,7 +14,8 @@ export class VerifiedSellerGuard implements CanActivate {
     }
 
     // Admins bypass seller checks
-    if (user.role === 'admin') {
+    const role = user.role?.toLowerCase()?.trim();
+    if (role === 'admin' || role === 'super_admin' || role === 'superadmin') {
       return true;
     }
 
