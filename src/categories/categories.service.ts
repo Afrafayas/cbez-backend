@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadService } from '../upload/upload.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService,
+  ) {}
 
   private formatCategory(category: any) {
     let specConfig = [];
@@ -35,11 +39,16 @@ export class CategoriesService {
     }
 
     const slug = dto.slug || dto.name.toLowerCase().replace(/\s+/g, '-');
+    let categoryImage = dto.image || null;
+    if (categoryImage && categoryImage.startsWith('data:')) {
+      categoryImage = await this.uploadService.uploadBase64Image(categoryImage, 'categories');
+    }
+
     const category = await this.prisma.category.create({
       data: {
         name: dto.name,
         slug,
-        image: dto.image || null,
+        image: categoryImage,
         specConfigJson: JSON.stringify(dto.specConfig || []),
       },
     });
@@ -114,6 +123,9 @@ export class CategoriesService {
     }
 
     const updateData: any = { ...dto };
+    if (updateData.image && updateData.image.startsWith('data:')) {
+      updateData.image = await this.uploadService.uploadBase64Image(updateData.image, 'categories');
+    }
     if (dto.specConfig !== undefined) {
       updateData.specConfigJson = JSON.stringify(dto.specConfig);
       delete updateData.specConfig;

@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadService } from '../upload/upload.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
 
 @Injectable()
 export class BrandsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService,
+  ) {}
 
   async create(dto: CreateBrandDto) {
     const existing = await this.prisma.brand.findUnique({
@@ -15,10 +19,15 @@ export class BrandsService {
       throw new BadRequestException(`Brand "${dto.name}" already exists`);
     }
 
+    let brandLogo = dto.logo || null;
+    if (brandLogo && brandLogo.startsWith('data:')) {
+      brandLogo = await this.uploadService.uploadBase64Image(brandLogo, 'brands');
+    }
+
     const brand = await this.prisma.brand.create({
       data: {
         name: dto.name,
-        logo: dto.logo || null,
+        logo: brandLogo,
       },
     });
     return {
@@ -64,9 +73,14 @@ export class BrandsService {
     if (!existing) {
       throw new NotFoundException(`Brand with ID ${id} not found`);
     }
+    const updateData: any = { ...dto };
+    if (updateData.logo && updateData.logo.startsWith('data:')) {
+      updateData.logo = await this.uploadService.uploadBase64Image(updateData.logo, 'brands');
+    }
+
     const brand = await this.prisma.brand.update({
       where: { id },
-      data: dto,
+      data: updateData,
     });
     return {
       success: true,

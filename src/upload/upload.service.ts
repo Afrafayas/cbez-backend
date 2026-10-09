@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as fs from 'fs';
@@ -21,15 +22,31 @@ export class UploadService {
   private bucketName: string = '';
   private region: string = '';
 
-  constructor() {
+  constructor(@Optional() private readonly configService?: ConfigService) {
     this.initS3();
   }
 
   private initS3() {
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-    const region = process.env.AWS_REGION || 'ap-south-1';
-    const bucket = process.env.AWS_S3_BUCKET || 'cbez-gallery-uploads';
+    const accessKeyId = (
+      this.configService?.get<string>('AWS_ACCESS_KEY_ID') ||
+      process.env.AWS_ACCESS_KEY_ID ||
+      ''
+    ).trim();
+    const secretAccessKey = (
+      this.configService?.get<string>('AWS_SECRET_ACCESS_KEY') ||
+      process.env.AWS_SECRET_ACCESS_KEY ||
+      ''
+    ).trim();
+    const region = (
+      this.configService?.get<string>('AWS_REGION') ||
+      process.env.AWS_REGION ||
+      'ap-south-1'
+    ).trim();
+    const bucket = (
+      this.configService?.get<string>('AWS_S3_BUCKET') ||
+      process.env.AWS_S3_BUCKET ||
+      'cbez-gallery-uploads'
+    ).trim();
 
     if (accessKeyId && secretAccessKey) {
       this.s3Client = new S3Client({
@@ -43,7 +60,7 @@ export class UploadService {
       this.region = region;
       this.logger.log(`AWS S3 Initialized successfully with Bucket: "${this.bucketName}" (${this.region})`);
     } else {
-      this.logger.warn('AWS S3 credentials missing in .env. Falling back to local disk uploads.');
+      this.logger.warn('AWS S3 credentials missing in .env (or Render env vars). Falling back to local disk uploads.');
     }
   }
 
@@ -73,7 +90,8 @@ export class UploadService {
           Bucket: this.bucketName,
           Key: key,
           Body: fileBuffer,
-          ContentType: mimetype,
+          ContentType: mimetype || 'image/jpeg',
+          CacheControl: 'public, max-age=31536000, immutable',
         }),
       );
 
@@ -94,14 +112,18 @@ export class UploadService {
     const subfolder = folderName || (req.query?.folder as string) || 'general';
     const cleanFolder = subfolder.replace(/[^a-zA-Z0-9_-]/g, '');
 
-    // Try S3 upload if configured
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const cleanBase = path.basename(file.originalname || 'img', ext).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+    const uniqueFilename = file.filename || `${cleanBase || 'img'}-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+
+    // 1. Try direct S3 upload from memory buffer (preferred)
     if (this.s3Client && file.buffer) {
-      const s3Url = await this.uploadFileToS3(file.buffer, file.filename || `${Date.now()}-${file.originalname}`, file.mimetype, cleanFolder);
+      const s3Url = await this.uploadFileToS3(file.buffer, uniqueFilename, file.mimetype, cleanFolder);
       if (s3Url) {
         return {
           url: s3Url,
           path: s3Url,
-          filename: file.filename || file.originalname,
+          filename: uniqueFilename,
           originalName: file.originalname,
           mimetype: file.mimetype,
           size: file.size,
@@ -110,16 +132,21 @@ export class UploadService {
       }
     }
 
-    // If file is saved to disk via multer storage disk:
+    // 2. If file was saved to disk via diskStorage
     if (file.path && fs.existsSync(file.path) && this.s3Client) {
       try {
         const fileBuffer = fs.readFileSync(file.path);
-        const s3Url = await this.uploadFileToS3(fileBuffer, file.filename, file.mimetype, cleanFolder);
+        const s3Url = await this.uploadFileToS3(fileBuffer, file.filename || uniqueFilename, file.mimetype, cleanFolder);
         if (s3Url) {
+          // Clean up the temporary local file
+          try {
+            fs.unlinkSync(file.path);
+          } catch (_) {}
+
           return {
             url: s3Url,
             path: s3Url,
-            filename: file.filename,
+            filename: file.filename || uniqueFilename,
             originalName: file.originalname,
             mimetype: file.mimetype,
             size: file.size,
@@ -131,13 +158,23 @@ export class UploadService {
       }
     }
 
-    // Fallback to local disk URL
+    // 3. Fallback to local disk (when AWS S3 credentials are not configured or upload failed)
     const baseUrl = this.getBaseUrl(req);
-    const relativePath = `/uploads/${cleanFolder}/${file.filename}`;
+    const relativePath = `/uploads/${cleanFolder}/${uniqueFilename}`;
+
+    if (file.buffer) {
+      const uploadDir = path.join(process.cwd(), 'uploads', cleanFolder);
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const diskPath = path.join(uploadDir, uniqueFilename);
+      fs.writeFileSync(diskPath, file.buffer);
+    }
+
     return {
       url: `${baseUrl}${relativePath}`,
       path: relativePath,
-      filename: file.filename,
+      filename: uniqueFilename,
       originalName: file.originalname,
       mimetype: file.mimetype,
       size: file.size,
@@ -194,7 +231,8 @@ export class UploadService {
 
     const mimetype = matches[1];
     const buffer = Buffer.from(matches[2], 'base64');
-    const ext = mimetype.split('/')[1] || 'jpg';
+    let ext = mimetype.split('/')[1]?.split('+')[0] || 'jpg';
+    if (ext === 'jpeg') ext = 'jpg';
     const filename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
     if (this.s3Client && this.bucketName) {
