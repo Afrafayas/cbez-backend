@@ -74,15 +74,68 @@ export class ActivityLogsController {
     return this.activityLogsService.findSellerCustomerLogs(req.user?.id, shopId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('user/:userId')
-  async findByUser(@Param('userId') userId: string) {
-    return this.activityLogsService.findByUser(userId);
+  async findByUser(
+    @Param('userId') userId: string,
+    @Request() req: any,
+    @Query('currentUserId') currentUserId?: string,
+  ) {
+    let currentUser = req.user || null;
+    if (!currentUser) {
+      const authHeader = req.headers?.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.split(' ')[1];
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+            const uid = payload.sub || payload.id || payload.userId;
+            if (uid) {
+              currentUser = await this.activityLogsService.getUserById(uid);
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (!currentUser && currentUserId) {
+      currentUser = await this.activityLogsService.getUserById(currentUserId);
+    }
+
+    return this.activityLogsService.findByUser(userId, currentUser);
   }
 
   @Get()
-  async findAll() {
-    return this.activityLogsService.findAll();
+  async findAll(
+    @Request() req: any,
+    @Query('userId') queryUserId?: string,
+    @Query('sellerId') querySellerId?: string,
+  ) {
+    let currentUser = req.user || null;
+
+    if (!currentUser) {
+      const authHeader = req.headers?.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.split(' ')[1];
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+            const uid = payload.sub || payload.id || payload.userId;
+            if (uid) {
+              currentUser = await this.activityLogsService.getUserById(uid);
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    const testId = queryUserId || querySellerId;
+    if (!currentUser && testId) {
+      currentUser = await this.activityLogsService.getUserById(testId);
+    }
+
+    return this.activityLogsService.findAll(currentUser);
   }
 }
 

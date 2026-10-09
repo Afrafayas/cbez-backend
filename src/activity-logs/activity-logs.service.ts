@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SELLER_VERIFICATION_MESSAGE } from '../shops/shop-profile.helper';
 
@@ -162,7 +162,231 @@ export class ActivityLogsService {
     };
   }
 
-  async findByUser(userId: string) {
+  async getUserById(userId: string) {
+    if (!userId || typeof userId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(userId)) {
+      return null;
+    }
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        shop: {
+          include: { products: true },
+        },
+      },
+    });
+  }
+
+  async findAgentCustomerLogs(agentUserId: string) {
+    const agentUser = await this.prisma.user.findUnique({
+      where: { id: agentUserId },
+      include: {
+        shop: {
+          include: { products: true },
+        },
+      },
+    });
+
+    if (!agentUser) {
+      throw new NotFoundException(`Agent user with ID ${agentUserId} not found`);
+    }
+
+    // Find all shops owned by this agent
+    const shops = await this.prisma.shop.findMany({
+      where: { ownerId: agentUserId },
+      include: { products: true },
+    });
+
+    if (agentUser.shop && !shops.some((s) => s.id === agentUser.shop?.id)) {
+      shops.push(agentUser.shop as any);
+    }
+
+    const shopIds = new Set<string>();
+    const shopNames = new Set<string>();
+    const productIds = new Set<string>();
+    const productNames = new Set<string>();
+
+    shops.forEach((s) => {
+      if (s.id) shopIds.add(s.id);
+      if (s.name) shopNames.add(s.name.trim().toLowerCase());
+      (s.products || []).forEach((p) => {
+        if (p.id) productIds.add(p.id);
+        if (p.name) productNames.add(p.name.trim().toLowerCase());
+      });
+    });
+
+    if (shopIds.size > 0) {
+      const extraProducts = await this.prisma.product.findMany({
+        where: { shopId: { in: Array.from(shopIds) } },
+        select: { id: true, name: true },
+      });
+      extraProducts.forEach((p) => {
+        if (p.id) productIds.add(p.id);
+        if (p.name) productNames.add(p.name.trim().toLowerCase());
+      });
+    }
+
+    if (shopIds.size === 0 && productIds.size === 0) {
+      return {
+        success: true,
+        message: 'Agent customer activity logs fetched successfully',
+        data: {
+          logs: [],
+        },
+      };
+    }
+
+    const rawLogs = await this.prisma.activityLog.findMany({
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, phone: true, role: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+    });
+
+    const filteredLogs: any[] = [];
+    const seenLogKeys = new Set<string>();
+
+    for (const log of rawLogs) {
+      // RULE 1: EXCLUDE AGENT'S OWN ACTIVITY LOGS ("no need of showing their on activity logs")
+      if (
+        log.userId &&
+        String(log.userId).trim().toLowerCase() === String(agentUserId).trim().toLowerCase()
+      ) {
+        continue;
+      }
+      if (
+        log.user?.id &&
+        String(log.user.id).trim().toLowerCase() === String(agentUserId).trim().toLowerCase()
+      ) {
+        continue;
+      }
+
+      const details = this.sanitizeDetails(log.details) || '';
+      const detailsLower = details.toLowerCase();
+
+      if (
+        detailsLower.includes('(self interaction') ||
+        detailsLower.includes('(self view)') ||
+        detailsLower.includes('(own shop)')
+      ) {
+        continue;
+      }
+
+      // RULE 2: ONLY SHOW CUSTOMERS ACTIVITY LOG ("only show the customers activity log")
+      // Admins and other sellers are NOT customers
+      if (log.user?.role && (log.user.role === 'admin' || log.user.role === 'seller')) {
+        continue;
+      }
+
+      const actionUpper = (log.action || '').toUpperCase();
+      if (
+        actionUpper.startsWith('CREATE_') ||
+        actionUpper.startsWith('UPDATE_') ||
+        actionUpper.startsWith('DELETE_') ||
+        actionUpper === 'LOGIN' ||
+        actionUpper === 'REGISTER'
+      ) {
+        continue;
+      }
+
+      // RULE 3: ONLY VISIBLE THEIR PRODUCTS AND RELATED ACTIVITY LOGS
+      let isRelevant = false;
+
+      // 3.1 Match product IDs
+      for (const pId of productIds) {
+        if (detailsLower.includes(pId.toLowerCase())) {
+          isRelevant = true;
+          break;
+        }
+      }
+
+      // 3.2 Match product names
+      if (!isRelevant) {
+        for (const pName of productNames) {
+          if (pName.length >= 3 && detailsLower.includes(pName)) {
+            isRelevant = true;
+            break;
+          }
+        }
+      }
+
+      // 3.3 Match shop IDs
+      if (!isRelevant) {
+        for (const sId of shopIds) {
+          if (detailsLower.includes(sId.toLowerCase())) {
+            isRelevant = true;
+            break;
+          }
+        }
+      }
+
+      // 3.4 Match shop names
+      if (!isRelevant) {
+        for (const sName of shopNames) {
+          if (sName.length >= 3 && detailsLower.includes(sName)) {
+            isRelevant = true;
+            break;
+          }
+        }
+      }
+
+      if (!isRelevant) {
+        continue;
+      }
+
+      const uniqueKey = `${log.action}_${log.userId || log.ipAddress || 'anon'}_${details}_${new Date(log.createdAt).getTime()}`;
+      if (seenLogKeys.has(uniqueKey)) continue;
+      seenLogKeys.add(uniqueKey);
+
+      filteredLogs.push(log);
+    }
+
+    // Also include shop leads from Lead model if not duplicate
+    if (shopIds.size > 0) {
+      const shopLeads = await this.prisma.lead.findMany({
+        where: { shopId: { in: Array.from(shopIds) } },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      });
+
+      for (const lead of shopLeads) {
+        const leadKey = `LEAD_${lead.id}`;
+        if (!seenLogKeys.has(leadKey)) {
+          seenLogKeys.add(leadKey);
+          filteredLogs.push({
+            id: lead.id,
+            userId: null,
+            action: lead.contactType === 'whatsapp' ? 'WHATSAPP_CLICK' : 'CALL_CLICK',
+            createdAt: lead.createdAt,
+            details: `${lead.contactType === 'whatsapp' ? 'WhatsApp' : 'Phone Call'} lead for product "${lead.productName}". Customer: ${lead.customerName} (${lead.customerPhone})`,
+            ipAddress: null,
+            userAgent: null,
+            user: {
+              id: null,
+              name: lead.customerName || 'Customer',
+              email: null,
+              phone: lead.customerPhone || null,
+              role: 'customer',
+            },
+          });
+        }
+      }
+    }
+
+    filteredLogs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return {
+      success: true,
+      message: 'Agent customer activity logs fetched successfully',
+      data: {
+        logs: this.sanitizeLogs(filteredLogs),
+      },
+    };
+  }
+
+  async findByUser(userId: string, currentUser?: any) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true, email: true, phone: true, role: true },
@@ -172,11 +396,45 @@ export class ActivityLogsService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    const logs = await this.prisma.activityLog.findMany({
+    const rawLogs = await this.prisma.activityLog.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
+
+    let logs = rawLogs;
+
+    // If caller is an agent (not admin), only show customer logs related to their own products/shop
+    if (currentUser && currentUser.role !== 'admin') {
+      const shops = await this.prisma.shop.findMany({
+        where: { ownerId: currentUser.id },
+        include: { products: true },
+      });
+      const shopIds = new Set(shops.map((s) => s.id));
+      const shopNames = new Set(shops.map((s) => s.name.trim().toLowerCase()));
+      const products = shops.flatMap((s) => s.products);
+      const productIds = new Set(products.map((p) => p.id));
+      const productNames = new Set(products.map((p) => p.name.trim().toLowerCase()));
+
+      logs = rawLogs.filter((log) => {
+        // Exclude agent's own actions
+        if (log.userId === currentUser.id) return false;
+        const details = (log.details || '').toLowerCase();
+        for (const pId of productIds) {
+          if (details.includes(pId.toLowerCase())) return true;
+        }
+        for (const pName of productNames) {
+          if (pName.length >= 3 && details.includes(pName)) return true;
+        }
+        for (const sId of shopIds) {
+          if (details.includes(sId.toLowerCase())) return true;
+        }
+        for (const sName of shopNames) {
+          if (sName.length >= 3 && details.includes(sName)) return true;
+        }
+        return false;
+      });
+    }
 
     return {
       success: true,
@@ -188,24 +446,40 @@ export class ActivityLogsService {
     };
   }
 
-  async findAll() {
-    const logs = await this.prisma.activityLog.findMany({
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, phone: true, role: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 500,
-    });
+  async findAll(currentUser?: any) {
+    // If no user context provided, throw UnauthorizedException
+    if (!currentUser) {
+      throw new UnauthorizedException('Authentication required. Only admin and authorized agents can view activity logs.');
+    }
 
-    return {
-      success: true,
-      message: 'All activity logs fetched successfully',
-      data: {
-        logs: this.sanitizeLogs(logs),
-      },
-    };
+    // 1. Admin: Sees all activity logs
+    if (currentUser.role === 'admin') {
+      const logs = await this.prisma.activityLog.findMany({
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, phone: true, role: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      });
+
+      return {
+        success: true,
+        message: 'All activity logs fetched successfully (Admin access)',
+        data: {
+          logs: this.sanitizeLogs(logs),
+        },
+      };
+    }
+
+    // 2. Agent / Seller: Sees only customer activity logs for their own products and shop
+    if (currentUser.role === 'seller' || currentUser.role === 'agent' || currentUser.shop) {
+      return this.findAgentCustomerLogs(currentUser.id);
+    }
+
+    // 3. Customer: only customer's own logs
+    return this.findMine(currentUser.id);
   }
 
   async findSellerCustomerLogs(sellerUserId?: string, shopId?: string) {
