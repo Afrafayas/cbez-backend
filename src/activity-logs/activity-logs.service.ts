@@ -33,12 +33,109 @@ export class ActivityLogsService {
     try {
       const isValidObjectId = typeof userId === 'string' && /^[0-9a-fA-F]{24}$/.test(userId);
       const cleanUserId = isValidObjectId ? userId : null;
+      const cleanAction = action || 'UNKNOWN_ACTION';
       const cleanDetails = this.sanitizeDetails(details);
+
+      // Determine user identification filter for duplicate check
+      const userFilter: any = cleanUserId
+        ? { userId: cleanUserId }
+        : ipAddress
+          ? { userId: null, ipAddress }
+          : null;
+
+      // Deduplication check: Avoid duplicate logs when the same user performs the same activity
+      // on the same product/service multiple times
+      if (userFilter) {
+        // Extract product or service ID if present in details
+        const prodIdMatch =
+          cleanDetails?.match(/\(ID:\s*([^\s,\)]+)/i) ||
+          cleanDetails?.match(/(?:productId|serviceId)["']?\s*[:=]\s*["']?([^\s,"'\)\}]+)/i) ||
+          cleanDetails?.match(/\b(?:product|service)\s*id[:=]\s*([a-fA-F0-9]{24})/i);
+        const extractedId = prodIdMatch ? prodIdMatch[1] : null;
+
+        // Extract product or service title if present in details
+        const prodTitleMatch =
+          cleanDetails?.match(/(?:product|service):?\s*["']([^"']+)["']/i) ||
+          cleanDetails?.match(/(?:product|service)\s+["']([^"']+)["']/i) ||
+          cleanDetails?.match(/["']([^"']{2,})["']/i);
+        const extractedTitle = prodTitleMatch ? prodTitleMatch[1] : null;
+
+        const isProductOrServiceAction = [
+          'PRODUCT_CLICK',
+          'PRODUCT_VIEW',
+          'VIEW_PRODUCT',
+          'CLICK_PRODUCT',
+          'WHATSAPP_CLICK',
+          'CALL_CLICK',
+          'WISHLIST',
+          'WISHLIST_ADD',
+          'WISHLIST_REMOVE',
+          'LOCATION_CLICK',
+          'DIRECTIONS_CLICK',
+          'SERVICE_CLICK',
+          'SERVICE_VIEW',
+          'VIEW_SERVICE',
+        ].includes(cleanAction.toUpperCase());
+
+        const mentionsProductOrService = cleanDetails
+          ? /\b(product|service|shop|item|listing)\b/i.test(cleanDetails)
+          : false;
+
+        let existingLog: any = null;
+
+        // 1. Exact match on details for this user and action
+        if (cleanDetails) {
+          existingLog = await this.prisma.activityLog.findFirst({
+            where: {
+              ...userFilter,
+              action: cleanAction,
+              details: cleanDetails,
+            },
+          });
+        }
+
+        // 2. Check if an activity for this user and action already exists for the same product/service ID
+        if (!existingLog && extractedId) {
+          existingLog = await this.prisma.activityLog.findFirst({
+            where: {
+              ...userFilter,
+              action: cleanAction,
+              details: { contains: extractedId },
+            },
+          });
+        }
+
+        // 3. Check if an activity for this user and action already exists for the same product/service title
+        if (!existingLog && extractedTitle && (isProductOrServiceAction || mentionsProductOrService)) {
+          existingLog = await this.prisma.activityLog.findFirst({
+            where: {
+              ...userFilter,
+              action: cleanAction,
+              details: { contains: extractedTitle, mode: 'insensitive' },
+            },
+          });
+        }
+
+        // 4. If action is a product/service action with no details, avoid duplicate clicks
+        if (!existingLog && !cleanDetails && isProductOrServiceAction) {
+          existingLog = await this.prisma.activityLog.findFirst({
+            where: {
+              ...userFilter,
+              action: cleanAction,
+            },
+          });
+        }
+
+        // If duplicate activity exists, do not create a new one in the database
+        if (existingLog) {
+          return existingLog;
+        }
+      }
 
       return await this.prisma.activityLog.create({
         data: {
           userId: cleanUserId,
-          action: action || 'UNKNOWN_ACTION',
+          action: cleanAction,
           details: cleanDetails,
           ipAddress: ipAddress || null,
           userAgent: userAgent || null,
