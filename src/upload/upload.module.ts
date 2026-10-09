@@ -1,6 +1,6 @@
 import { Module, BadRequestException } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { existsSync, mkdirSync } from 'fs';
 import { extname, join } from 'path';
 import { UploadController } from './upload.controller';
@@ -52,7 +52,7 @@ export const imageFileFilter = (req: any, file: Express.Multer.File, cb: any) =>
 @Module({
   imports: [
     MulterModule.register({
-      storage: multerStorage,
+      storage: memoryStorage(),
       fileFilter: imageFileFilter,
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB per file

@@ -1,12 +1,16 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadService } from '../upload/upload.service';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { BannerFilterDto } from './dto/banner-filter.dto';
 
 @Injectable()
 export class BannersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService,
+  ) {}
 
   private isValidObjectId(id: string): boolean {
     return /^[0-9a-fA-F]{24}$/.test((id || '').trim());
@@ -33,11 +37,16 @@ export class BannersService {
       }
     }
 
+    let bannerImage = dto.image.trim();
+    if (bannerImage.startsWith('data:')) {
+      bannerImage = await this.uploadService.uploadBase64Image(bannerImage, 'banners');
+    }
+
     const banner = await this.prisma.banner.create({
       data: {
         title: dto.title.trim(),
         details: dto.details?.trim() || null,
-        image: dto.image.trim(),
+        image: bannerImage,
         type: dto.type,
         shopId: dto.type === 'ads' ? (dto.shopId || '').trim() : null,
         isActive: dto.isActive !== undefined ? dto.isActive : true,
@@ -103,7 +112,13 @@ export class BannersService {
     const updateData: any = {};
     if (dto.title !== undefined) updateData.title = dto.title.trim();
     if (dto.details !== undefined) updateData.details = dto.details ? dto.details.trim() : null;
-    if (dto.image !== undefined) updateData.image = dto.image.trim();
+    if (dto.image !== undefined) {
+      let bannerImage = dto.image.trim();
+      if (bannerImage.startsWith('data:')) {
+        bannerImage = await this.uploadService.uploadBase64Image(bannerImage, 'banners');
+      }
+      updateData.image = bannerImage;
+    }
     if (dto.type !== undefined) updateData.type = dto.type;
     updateData.shopId = finalShopId;
     if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
