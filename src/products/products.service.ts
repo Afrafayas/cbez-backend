@@ -22,7 +22,9 @@ export class ProductsService {
 
     let shop: any = null;
 
-    if (callingUser?.role === 'admin') {
+    const userRole = callingUser?.role?.toLowerCase()?.trim();
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin' || userRole === 'superadmin';
+    if (isAdmin) {
       const targetShopId = dto.shopId || (dto as any).shop;
       if (targetShopId) {
         shop = await this.prisma.shop.findUnique({ where: { id: targetShopId } });
