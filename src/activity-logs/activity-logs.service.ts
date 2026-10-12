@@ -4,7 +4,7 @@ import { SELLER_VERIFICATION_MESSAGE } from '../shops/shop-profile.helper';
 
 @Injectable()
 export class ActivityLogsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private sanitizeDetails(details?: string | null): string | null {
     if (!details) return null;
@@ -43,7 +43,14 @@ export class ActivityLogsService {
           ? { userId: null, ipAddress }
           : null;
 
-      // Deduplication check: Avoid duplicate logs when the same user performs the same activity
+      // Extract phone if present in details
+      const phoneMatch =
+        cleanDetails?.match(/Customer:[^(]+\(([^)]+)\)/i) ||
+        cleanDetails?.match(/\b(?:\+?91[\s-]?)?([6-9]\d{9})\b/);
+      const rawPhone = phoneMatch ? (phoneMatch[1] || phoneMatch[0]) : null;
+      const cleanPhoneDigits = rawPhone ? rawPhone.replace(/\D/g, '').slice(-10) : null;
+
+      // Deduplication check: Avoid duplicate logs when the same user/customer performs the same activity
       // on the same product/service multiple times
       if (userFilter) {
         // Extract product or service ID if present in details
@@ -116,7 +123,18 @@ export class ActivityLogsService {
           });
         }
 
-        // 4. If action is a product/service action with no details, avoid duplicate clicks
+        // 4. Check if an activity already exists for this action with the same customer phone and product
+        if (!existingLog && cleanPhoneDigits && isProductOrServiceAction) {
+          existingLog = await this.prisma.activityLog.findFirst({
+            where: {
+              action: cleanAction,
+              details: { contains: cleanPhoneDigits },
+              ...(extractedId ? { details: { contains: extractedId } } : {}),
+            },
+          });
+        }
+
+        // 5. If action is a product/service action with no details, avoid duplicate clicks
         if (!existingLog && !cleanDetails && isProductOrServiceAction) {
           existingLog = await this.prisma.activityLog.findFirst({
             where: {
@@ -129,6 +147,25 @@ export class ActivityLogsService {
         // If duplicate activity exists, do not create a new one in the database
         if (existingLog) {
           return existingLog;
+        }
+      } else if (cleanPhoneDigits) {
+        // Fallback duplicate check by phone when userFilter is null
+        const prodTitleMatch =
+          cleanDetails?.match(/(?:product|service):?\s*["']([^"']+)["']/i) ||
+          cleanDetails?.match(/["']([^"']{2,})["']/i);
+        const extractedTitle = prodTitleMatch ? prodTitleMatch[1] : null;
+
+        const existingByPhone = await this.prisma.activityLog.findFirst({
+          where: {
+            action: cleanAction,
+            details: { contains: cleanPhoneDigits },
+          },
+        });
+
+        if (existingByPhone) {
+          if (!extractedTitle || existingByPhone.details?.toLowerCase().includes(extractedTitle.toLowerCase())) {
+            return existingByPhone;
+          }
         }
       }
 
@@ -336,9 +373,17 @@ export class ActivityLogsService {
         continue;
       }
 
-      const uniqueKey = `${log.action}_${log.userId || log.ipAddress || 'anon'}_${details}_${new Date(log.createdAt).getTime()}`;
-      if (seenLogKeys.has(uniqueKey)) continue;
-      seenLogKeys.add(uniqueKey);
+      const custPhone = log.user?.phone || (details.match(/Customer:[^(]+\(([^)]+)\)/i)?.[1] || '');
+      const custPhoneDigits = custPhone.replace(/\D/g, '').slice(-10);
+      const custIdentifier = custPhoneDigits || log.user?.id || log.userId || (log.user?.name && log.user.name !== 'Customer' ? log.user.name.toLowerCase() : log.ipAddress || 'anon');
+
+      const prodIdMatch = details.match(/\(ID:\s*([^\s,\)]+)/i);
+      const prodTitleMatch = details.match(/(?:product|service):?\s*["']([^"']+)["']/i);
+      const prodIdentifier = prodIdMatch?.[1] || prodTitleMatch?.[1]?.toLowerCase().trim() || 'item';
+
+      const dedupeKey = `${log.action}_${custIdentifier}_${prodIdentifier}`;
+      if (seenLogKeys.has(dedupeKey)) continue;
+      seenLogKeys.add(dedupeKey);
 
       filteredLogs.push(log);
     }
@@ -352,26 +397,31 @@ export class ActivityLogsService {
       });
 
       for (const lead of shopLeads) {
-        const leadKey = `LEAD_${lead.id}`;
-        if (!seenLogKeys.has(leadKey)) {
-          seenLogKeys.add(leadKey);
-          filteredLogs.push({
-            id: lead.id,
-            userId: null,
-            action: lead.contactType === 'whatsapp' ? 'WHATSAPP_CLICK' : 'CALL_CLICK',
-            createdAt: lead.createdAt,
-            details: `${lead.contactType === 'whatsapp' ? 'WhatsApp' : 'Phone Call'} lead for product "${lead.productName}". Customer: ${lead.customerName} (${lead.customerPhone})`,
-            ipAddress: null,
-            userAgent: null,
-            user: {
-              id: null,
-              name: lead.customerName || 'Customer',
-              email: null,
-              phone: lead.customerPhone || null,
-              role: 'customer',
-            },
-          });
-        }
+        const leadPhoneDigits = (lead.customerPhone || '').replace(/\D/g, '').slice(-10);
+        const custIdentifier = leadPhoneDigits || (lead.customerName && !['customer', 'guest', 'local consumer'].includes(lead.customerName.toLowerCase()) ? lead.customerName.toLowerCase() : 'anon');
+        const prodIdentifier = lead.productId || (lead.productName || '').toLowerCase().trim() || 'item';
+        const action = lead.contactType === 'whatsapp' ? 'WHATSAPP_CLICK' : 'CALL_CLICK';
+
+        const dedupeKey = `${action}_${custIdentifier}_${prodIdentifier}`;
+        if (seenLogKeys.has(dedupeKey)) continue;
+        seenLogKeys.add(dedupeKey);
+
+        filteredLogs.push({
+          id: lead.id,
+          userId: null,
+          action: lead.contactType === 'whatsapp' ? 'WHATSAPP_CLICK' : 'CALL_CLICK',
+          createdAt: lead.createdAt,
+          details: `${lead.contactType === 'whatsapp' ? 'WhatsApp' : 'Phone Call'} lead for product "${lead.productName}". Customer: ${lead.customerName} (${lead.customerPhone})`,
+          ipAddress: null,
+          userAgent: null,
+          user: {
+            id: null,
+            name: lead.customerName || 'Customer',
+            email: null,
+            phone: lead.customerPhone || null,
+            role: 'customer',
+          },
+        });
       }
     }
 
@@ -617,10 +667,6 @@ export class ActivityLogsService {
       }
 
       if (isRelevant) {
-        const uniqueKey = `${log.action}_${log.userId || log.details}_${new Date(log.createdAt).getTime()}`;
-        if (seenLogKeys.has(uniqueKey)) continue;
-        seenLogKeys.add(uniqueKey);
-
         let customerName = log.user?.name || 'Customer';
         let customerEmail = log.user?.email || null;
         let customerPhone = log.user?.phone || null;
@@ -650,6 +696,15 @@ export class ActivityLogsService {
           };
         }
 
+        const custPhone = customerPhone || log.user?.phone || '';
+        const custPhoneDigits = custPhone.replace(/\D/g, '').slice(-10);
+        const custIdentifier = custPhoneDigits || log.user?.id || log.userId || (customerName && customerName !== 'Customer' ? customerName.toLowerCase() : log.ipAddress || 'anon');
+        const prodIdentifier = (matchedProduct?.id && matchedProduct.id !== 'prod-item' ? matchedProduct.id : '') || (matchedProduct?.name || '').trim().toLowerCase() || 'item';
+
+        const dedupeKey = `${log.action}_${custIdentifier}_${prodIdentifier}`;
+        if (seenLogKeys.has(dedupeKey)) continue;
+        seenLogKeys.add(dedupeKey);
+
         const isProductClick = log.action === 'PRODUCT_CLICK';
         const isLocked = isProductClick && !isPremium;
 
@@ -664,53 +719,58 @@ export class ActivityLogsService {
           requiresPremium: isProductClick && !isPremium,
           customer: isLocked
             ? {
-                id: log.user?.id || 'masked-user',
-                name: 'Buyer (Premium Insight)',
-                email: '***@***.***',
-                phone: '+91 **********',
-                isMasked: true,
-              }
+              id: log.user?.id || 'masked-user',
+              name: 'Buyer (Premium Insight)',
+              email: '***@***.***',
+              phone: '+91 **********',
+              isMasked: true,
+            }
             : {
-                id: log.user?.id || null,
-                name: customerName,
-                email: customerEmail,
-                phone: customerPhone,
-                isMasked: false,
-              },
+              id: log.user?.id || null,
+              name: customerName,
+              email: customerEmail,
+              phone: customerPhone,
+              isMasked: false,
+            },
           product: matchedProduct,
         });
       }
     }
 
     for (const lead of shopLeads) {
-      const leadKey = `LEAD_${lead.id}`;
-      if (!seenLogKeys.has(leadKey)) {
-        seenLogKeys.add(leadKey);
-        filteredLogs.push({
-          id: lead.id,
-          action: lead.contactType === 'whatsapp' ? 'WHATSAPP_CLICK' : 'CALL_CLICK',
-          createdAt: lead.createdAt,
-          details: `${lead.contactType === 'whatsapp' ? 'WhatsApp' : 'Phone Call'} lead for product "${lead.productName}". Customer: ${lead.customerName} (${lead.customerPhone})`,
-          ipAddress: null,
-          userAgent: null,
-          isLocked: false,
-          requiresPremium: false,
-          customer: {
-            id: null,
-            name: lead.customerName,
-            email: null,
-            phone: lead.customerPhone,
-            isMasked: false,
-          },
-          product: {
-            id: lead.productId || 'lead-prod',
-            name: lead.productName,
-            price: 0,
-            category: 'Gadgets',
-            image: null,
-          },
-        });
-      }
+      const leadPhoneDigits = (lead.customerPhone || '').replace(/\D/g, '').slice(-10);
+      const custIdentifier = leadPhoneDigits || (lead.customerName && !['customer', 'guest', 'local consumer'].includes(lead.customerName.toLowerCase()) ? lead.customerName.toLowerCase() : 'anon');
+      const prodIdentifier = lead.productId || (lead.productName || '').trim().toLowerCase() || 'item';
+      const action = lead.contactType === 'whatsapp' ? 'WHATSAPP_CLICK' : 'CALL_CLICK';
+
+      const dedupeKey = `${action}_${custIdentifier}_${prodIdentifier}`;
+      if (seenLogKeys.has(dedupeKey)) continue;
+      seenLogKeys.add(dedupeKey);
+
+      filteredLogs.push({
+        id: lead.id,
+        action: action,
+        createdAt: lead.createdAt,
+        details: `${lead.contactType === 'whatsapp' ? 'WhatsApp' : 'Phone Call'} lead for product "${lead.productName}". Customer: ${lead.customerName} (${lead.customerPhone})`,
+        ipAddress: null,
+        userAgent: null,
+        isLocked: false,
+        requiresPremium: false,
+        customer: {
+          id: null,
+          name: lead.customerName,
+          email: null,
+          phone: lead.customerPhone,
+          isMasked: false,
+        },
+        product: {
+          id: lead.productId || 'lead-prod',
+          name: lead.productName,
+          price: 0,
+          category: 'Gadgets',
+          image: null,
+        },
+      });
     }
 
     filteredLogs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

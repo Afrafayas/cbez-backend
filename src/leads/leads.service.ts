@@ -9,7 +9,7 @@ export class LeadsService {
   constructor(
     private prisma: PrismaService,
     private activityLogsService: ActivityLogsService,
-  ) {}
+  ) { }
 
   async create(dto: CreateLeadDto) {
     let shop = await this.prisma.shop.findUnique({ where: { id: dto.shopId } }).catch(() => null);
@@ -55,29 +55,6 @@ export class LeadsService {
       String(effectiveUserId).trim().toLowerCase() === String(shop.ownerId).trim().toLowerCase()
     );
 
-    // Log Activity for WhatsApp / Call (Always create normal User Activity Log)
-    try {
-      if (dto.contactType === 'whatsapp') {
-        await this.activityLogsService.log(
-          effectiveUserId,
-          'WHATSAPP_CLICK',
-          isSameUser
-            ? `WhatsApp clicked for product: "${dto.productName}" (Self interaction by owner)`
-            : `WhatsApp clicked for product: "${dto.productName}" (Shop: "${shopName}"). Customer: ${dto.customerName} (${dto.customerPhone})`,
-        );
-      } else {
-        await this.activityLogsService.log(
-          effectiveUserId,
-          'CALL_CLICK',
-          isSameUser
-            ? `Call button clicked for product: "${dto.productName}" (Self interaction by owner)`
-            : `Call button clicked for product: "${dto.productName}" (Shop: "${shopName}", Phone: ${shopPhone}). Customer: ${dto.customerName} (${dto.customerPhone})`,
-        );
-      }
-    } catch (logErr) {
-      console.error('Failed to log lead activity:', logErr);
-    }
-
     // If user === seller, DO NOT create a separate Seller Activity Log / Lead
     if (isSameUser) {
       return {
@@ -89,16 +66,87 @@ export class LeadsService {
       };
     }
 
-    // If user !== seller, keep existing behavior and create the required Seller Activity Log as before
+    const customerPhoneDigits = (dto.customerPhone || '').replace(/\D/g, '').slice(-10);
+    const resolvedShopId = shopIdToSave && /^[0-9a-fA-F]{24}$/.test(shopIdToSave) ? shopIdToSave : null;
+
+    // Deduplication: If this customer already generated a lead for the same product and shop, DO NOT save duplicate to DB
+    if (resolvedShopId) {
+      const existingLeads = await this.prisma.lead.findMany({
+        where: {
+          shopId: resolvedShopId,
+          contactType: dto.contactType,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      });
+
+      const duplicateLead = existingLeads.find((l) => {
+        // Match product (by productId or normalized productName)
+        const matchesProduct =
+          (dto.productId && l.productId && dto.productId === l.productId) ||
+          (dto.productName && l.productName && dto.productName.trim().toLowerCase() === l.productName.trim().toLowerCase());
+
+        if (!matchesProduct) return false;
+
+        // Match customer by last 10 digits of phone
+        const leadPhoneDigits = (l.customerPhone || '').replace(/\D/g, '').slice(-10);
+        if (customerPhoneDigits && leadPhoneDigits && customerPhoneDigits === leadPhoneDigits) {
+          return true;
+        }
+
+        // Match customer by name if name is specific
+        if (
+          dto.customerName &&
+          l.customerName &&
+          dto.customerName.trim().toLowerCase() === l.customerName.trim().toLowerCase() &&
+          !['customer', 'anonymous buyer', 'local consumer', 'guest'].includes(dto.customerName.trim().toLowerCase())
+        ) {
+          return true;
+        }
+
+        return false;
+      });
+
+      if (duplicateLead) {
+        return {
+          success: true,
+          message: 'Lead already recorded for this customer and product (duplicate omitted)',
+          data: {
+            lead: duplicateLead,
+          },
+        };
+      }
+    }
+
+    // Log Activity for WhatsApp / Call only for fresh leads
+    try {
+      if (dto.contactType === 'whatsapp') {
+        await this.activityLogsService.log(
+          effectiveUserId,
+          'WHATSAPP_CLICK',
+          `WhatsApp clicked for product: "${dto.productName}" (Shop: "${shopName}"). Customer: ${dto.customerName} (${dto.customerPhone})`,
+        );
+      } else {
+        await this.activityLogsService.log(
+          effectiveUserId,
+          'CALL_CLICK',
+          `Call button clicked for product: "${dto.productName}" (Shop: "${shopName}", Phone: ${shopPhone}). Customer: ${dto.customerName} (${dto.customerPhone})`,
+        );
+      }
+    } catch (logErr) {
+      console.error('Failed to log lead activity:', logErr);
+    }
+
+    // If user !== seller and not duplicate, save fresh lead in database
     let lead: any;
-    if (shopIdToSave && /^[0-9a-fA-F]{24}$/.test(shopIdToSave)) {
+    if (resolvedShopId) {
       lead = await this.prisma.lead.create({
         data: {
-          shopId: shopIdToSave,
+          shopId: resolvedShopId,
           productId: (dto.productId && /^[0-9a-fA-F]{24}$/.test(dto.productId)) ? dto.productId : undefined,
           productName: dto.productName || 'Direct Shop Call',
           customerName: dto.customerName || 'Local Consumer',
-          customerPhone: dto.customerPhone,
+          customerPhone: dto.customerPhone || '',
           contactType: dto.contactType,
         },
       });
@@ -112,7 +160,7 @@ export class LeadsService {
             productId: (dto.productId && /^[0-9a-fA-F]{24}$/.test(dto.productId)) ? dto.productId : undefined,
             productName: dto.productName || 'Direct Shop Call',
             customerName: dto.customerName || 'Local Consumer',
-            customerPhone: dto.customerPhone,
+            customerPhone: dto.customerPhone || '',
             contactType: dto.contactType,
           },
         });
@@ -122,7 +170,7 @@ export class LeadsService {
           shopId: dto.shopId,
           productName: dto.productName || 'Direct Shop Call',
           customerName: dto.customerName || 'Local Consumer',
-          customerPhone: dto.customerPhone,
+          customerPhone: dto.customerPhone || '',
           contactType: dto.contactType,
           createdAt: new Date(),
         };

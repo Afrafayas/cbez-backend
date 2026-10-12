@@ -12,6 +12,8 @@ export interface OtpRecord {
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
   private otpStore = new Map<string, OtpRecord>();
+  private lastOtpSentTimes = new Map<string, number>();
+  private failedOtpAttempts = new Map<string, number>();
 
   private readonly whatsappApiUrl = process.env.WHATSAPP_API_URL || 'https://whatsapp.busytax.in/api/v1';
   private readonly senderId = process.env.WHATSAPP_SENDER_ID || '917025297999';
@@ -23,6 +25,16 @@ export class OtpService {
       for (const [key, record] of this.otpStore.entries()) {
         if (record.expiresAt < now) {
           this.otpStore.delete(key);
+        }
+      }
+      for (const [key, time] of this.lastOtpSentTimes.entries()) {
+        if (now - time > 10 * 60 * 1000) {
+          this.lastOtpSentTimes.delete(key);
+        }
+      }
+      for (const [key, _] of this.failedOtpAttempts.entries()) {
+        if (now > 10 * 60 * 1000) {
+          this.failedOtpAttempts.delete(key);
         }
       }
     }, 2 * 60 * 1000);
@@ -85,6 +97,8 @@ export class OtpService {
     phone: string;
     role: string;
     user?: any;
+    expiresIn?: number;
+    resendCooldown?: number;
     devOtp?: string;
   }> {
     if (!phone || !phone.trim()) {
@@ -99,6 +113,15 @@ export class OtpService {
     const targetRole = (role || 'customer').toLowerCase().trim();
     if (!['customer', 'seller', 'admin'].includes(targetRole)) {
       throw new BadRequestException('Role must be customer, seller, or admin');
+    }
+
+    // Rate-limit resend: require 60 seconds cooldown between OTP requests
+    const isTestNumber = digitsOnly.endsWith('9961624063');
+    const now = Date.now();
+    const lastSent = this.lastOtpSentTimes.get(digitsOnly);
+    if (!isTestNumber && lastSent && now - lastSent < 60 * 1000) {
+      const remainingSec = Math.ceil((60 * 1000 - (now - lastSent)) / 1000);
+      throw new BadRequestException(`Please wait ${remainingSec} seconds before requesting another OTP.`);
     }
 
     // 1. Check if user already exists in the database
@@ -122,7 +145,6 @@ export class OtpService {
     const isExistingUser = Boolean(existingUser);
     const isNewUser = !isExistingUser;
 
-    const isTestNumber = digitsOnly.endsWith('9961624063');
     const otpCode = isTestNumber ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -274,6 +296,9 @@ export class OtpService {
       this.logger.warn(`WhatsApp send failed for ${whatsappReceiverId}, OTP stored in DB & memory.`);
     }
 
+    this.lastOtpSentTimes.set(digitsOnly, Date.now());
+    this.failedOtpAttempts.delete(digitsOnly);
+
     const requiresReg = Boolean(existingUser.isNew);
 
     return {
@@ -292,6 +317,8 @@ export class OtpService {
         isNew: existingUser.isNew,
         ...(existingUser.shop ? { shopId: existingUser.shop.id, shop: existingUser.shop } : {}),
       },
+      expiresIn: 300,
+      resendCooldown: 60,
       ...(process.env.NODE_ENV !== 'production' ? { devOtp: otpCode } : {}),
     };
   }
@@ -335,14 +362,29 @@ export class OtpService {
       }
     }
 
-    // 3. Validate OTP code and expiry
-    if (!user.token || user.token !== cleanOtp) {
-      throw new BadRequestException('Invalid OTP entered. Please check and try again.');
-    }
-
+    // 3. Validate OTP expiry first (strict 5-minute / 300s window)
     if (!user.tokenExpiry || new Date() > new Date(user.tokenExpiry)) {
       throw new BadRequestException('OTP has expired. Please request a new OTP.');
     }
+
+    // 4. Validate OTP code with failed attempt limits
+    if (!user.token || user.token !== cleanOtp) {
+      const attempts = (this.failedOtpAttempts.get(digitsOnly) || 0) + 1;
+      this.failedOtpAttempts.set(digitsOnly, attempts);
+      if (attempts >= 5) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { token: null, tokenExpiry: null },
+        });
+        this.otpStore.delete(rawClean);
+        this.otpStore.delete(digitsOnly);
+        this.failedOtpAttempts.delete(digitsOnly);
+        throw new BadRequestException('Too many invalid attempts. Your OTP has been invalidated. Please request a new OTP.');
+      }
+      throw new BadRequestException(`Invalid OTP entered (${5 - attempts} attempts remaining). Please check and try again.`);
+    }
+
+    this.failedOtpAttempts.delete(digitsOnly);
 
     // 4. Clear token & expiry
     user = await this.prisma.user.update({
