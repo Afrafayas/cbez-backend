@@ -551,6 +551,11 @@ export class ProductsService {
       images = [];
     }
 
+    const rawOffer = (specs as any)['offerPrice'] ?? (specs as any)['Offer Price'];
+    const offerPrice = rawOffer !== undefined && rawOffer !== null && rawOffer !== '' && !isNaN(Number(rawOffer))
+      ? Number(rawOffer)
+      : undefined;
+
     return {
       id: p.id,
       name: p.name,
@@ -558,6 +563,7 @@ export class ProductsService {
       category: p.category,
       description: p.description,
       price: p.price,
+      offerPrice,
       stock: p.stock,
       isSoldOut: p.stock <= 0,
       shopId: p.shopId,

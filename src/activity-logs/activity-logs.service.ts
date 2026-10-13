@@ -184,17 +184,29 @@ export class ActivityLogsService {
   }
 
   async findMine(userId: string) {
-    const logs = await this.prisma.activityLog.findMany({
+    const rawLogs = await this.prisma.activityLog.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 200,
+    });
+
+    // Deduplicate identical consecutive actions on the same product within 5 minutes (Customer Login fix)
+    const seen = new Set<string>();
+    const deduplicatedLogs = rawLogs.filter((log) => {
+      const act = log.action || '';
+      const prodId = log.details?.match(/\(ID:\s*([^\s,\)]+)/i)?.[1] || '';
+      const timeBucket = Math.floor(new Date(log.createdAt).getTime() / (5 * 60 * 1000));
+      const key = `${act}_${prodId}_${timeBucket}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
 
     return {
       success: true,
       message: 'User activity logs fetched successfully',
       data: {
-        logs: this.sanitizeLogs(logs),
+        logs: this.sanitizeLogs(deduplicatedLogs),
       },
     };
   }
@@ -659,11 +671,10 @@ export class ActivityLogsService {
         }
       }
 
-      if (!isRelevant) {
-        const isDemoKochi = shopNameLower.includes('kochi') && detailsLower.includes('kochi gadgets');
-        if (isDemoKochi) {
-          isRelevant = true;
-        }
+      // Strictly require product to belong to this shop, unless it is a location/directions click for this shop
+      const isShopLevelAction = log.action === 'LOCATION_CLICK' || log.action === 'DIRECTIONS_CLICK';
+      if (!isRelevant || (!isShopLevelAction && !matchedProduct)) {
+        continue;
       }
 
       if (isRelevant) {
