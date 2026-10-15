@@ -544,7 +544,11 @@ export class ActivityLogsService {
     return this.findMine(currentUser.id);
   }
 
-  async findSellerCustomerLogs(sellerUserId?: string, shopId?: string) {
+  async findSellerCustomerLogs(
+    sellerUserId?: string,
+    shopId?: string,
+    dateOptions?: { startDate?: string; endDate?: string; date?: string },
+  ) {
     let shop: any = null;
     if (sellerUserId) {
       shop = await this.prisma.shop.findUnique({
@@ -590,9 +594,41 @@ export class ActivityLogsService {
       'PRODUCT_CLICK',
     ];
 
+    const dateFilter: any = {};
+    if (dateOptions) {
+      const { startDate, endDate, date } = dateOptions;
+
+      if (date && typeof date === 'string' && date.trim()) {
+        const cleanDate = date.trim();
+        const startDay = new Date(cleanDate.includes('T') ? cleanDate : `${cleanDate}T00:00:00.000Z`);
+        const endDay = new Date(cleanDate.includes('T') ? cleanDate : `${cleanDate}T23:59:59.999Z`);
+        if (!isNaN(startDay.getTime()) && !isNaN(endDay.getTime())) {
+          dateFilter.gte = startDay;
+          dateFilter.lte = endDay;
+        }
+      } else {
+        if (startDate && typeof startDate === 'string' && startDate.trim()) {
+          const cleanStart = startDate.trim();
+          const startDay = new Date(cleanStart.includes('T') ? cleanStart : `${cleanStart}T00:00:00.000Z`);
+          if (!isNaN(startDay.getTime())) {
+            dateFilter.gte = startDay;
+          }
+        }
+        if (endDate && typeof endDate === 'string' && endDate.trim()) {
+          const cleanEnd = endDate.trim();
+          const endDay = new Date(cleanEnd.includes('T') ? cleanEnd : `${cleanEnd}T23:59:59.999Z`);
+          if (!isNaN(endDay.getTime())) {
+            dateFilter.lte = endDay;
+          }
+        }
+      }
+    }
+    const hasDateFilter = Object.keys(dateFilter).length > 0;
+
     const rawLogs = await this.prisma.activityLog.findMany({
       where: {
         action: { in: targetActions },
+        ...(hasDateFilter ? { createdAt: dateFilter } : {}),
       },
       include: {
         user: {
@@ -604,7 +640,10 @@ export class ActivityLogsService {
     });
 
     const shopLeads = await this.prisma.lead.findMany({
-      where: { shopId: shop.id },
+      where: {
+        shopId: shop.id,
+        ...(hasDateFilter ? { createdAt: dateFilter } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });

@@ -327,7 +327,7 @@ export class ProductsService {
       success: true,
       message: 'Products fetched successfully',
       data: {
-        products: formattedProducts,
+        products: this.prioritizeInStock(formattedProducts),
       },
     };
   }
@@ -386,7 +386,7 @@ export class ProductsService {
       success: true,
       message: `Products for category "${category}" fetched successfully`,
       data: {
-        products: products.map((p) => this.formatProduct(p)),
+        products: this.prioritizeInStock(products.map((p) => this.formatProduct(p))),
       },
     };
   }
@@ -407,7 +407,7 @@ export class ProductsService {
       success: true,
       message: `Products for brand "${brand}" fetched successfully`,
       data: {
-        products: products.map((p) => this.formatProduct(p)),
+        products: this.prioritizeInStock(products.map((p) => this.formatProduct(p))),
       },
     };
   }
@@ -423,7 +423,7 @@ export class ProductsService {
       success: true,
       message: `Products for shop ID "${shopId}" fetched successfully`,
       data: {
-        products: products.map((p) => this.formatProduct(p)),
+        products: this.prioritizeInStock(products.map((p) => this.formatProduct(p))),
       },
     };
   }
@@ -526,6 +526,21 @@ export class ProductsService {
       message: 'Product deleted successfully',
       data: { id },
     };
+  }
+
+  private prioritizeInStock(products: any[]): any[] {
+    const inStock: any[] = [];
+    const outOfStock: any[] = [];
+
+    for (const p of products) {
+      if (p && p.stock > 0 && !p.isSoldOut) {
+        inStock.push(p);
+      } else {
+        outOfStock.push(p);
+      }
+    }
+
+    return [...inStock, ...outOfStock];
   }
 
   private formatProduct(p: any) {

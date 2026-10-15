@@ -70,8 +70,18 @@ export class ActivityLogsController {
 
   @UseGuards(AuthGuard('jwt'), VerifiedSellerGuard)
   @Get('seller/customers')
-  async findSellerCustomerLogs(@Request() req: any, @Query('shopId') shopId?: string) {
-    return this.activityLogsService.findSellerCustomerLogs(req.user?.id, shopId);
+  async findSellerCustomerLogs(
+    @Request() req: any,
+    @Query('shopId') shopId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('date') date?: string,
+  ) {
+    return this.activityLogsService.findSellerCustomerLogs(req.user?.id, shopId, {
+      startDate,
+      endDate,
+      date,
+    });
   }
 
   @Get('user/:userId')
