@@ -27,10 +27,12 @@ export class ProductsController {
     @Query('shopId') shopId?: string,
     @Query('lat') lat?: number,
     @Query('lng') lng?: number,
+    @Query('latitude') latitude?: number,
+    @Query('longitude') longitude?: number,
     @Query('radiusKm') radiusKm?: number,
     @Query('condition') condition?: string,
   ) {
-    return this.productsService.findAll({ search, category, brand, minPrice, maxPrice, city, sortBy, shopId, lat, lng, radiusKm, condition });
+    return this.productsService.findAll({ search, category, brand, minPrice, maxPrice, city, sortBy, shopId, lat, lng, latitude, longitude, radiusKm, condition });
   }
 
   @Get('category/:category')
@@ -65,9 +67,10 @@ export class ProductsController {
     return this.productsService.update(id, req.user.id, dto);
   }
 
-  @UseGuards(AuthGuard('jwt'), VerifiedSellerGuard)
   @Delete(':id')
   async remove(@Request() req: any, @Param('id') id: string) {
-    return this.productsService.remove(id, req.user.id);
+    const authHeader = req.headers?.authorization;
+    const userId = req.user?.id || req.user?.sub;
+    return this.productsService.remove(id, userId, authHeader);
   }
 }
