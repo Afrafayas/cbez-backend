@@ -345,6 +345,17 @@ export class ShopsService {
       throw new NotFoundException(`Shop with ID ${id} not found`);
     }
 
+    // Clean up all products and their related records belonging to this shop from database
+    const shopProducts = await this.prisma.product.findMany({
+      where: { shopId: id },
+      select: { id: true },
+    });
+    for (const p of shopProducts) {
+      await this.prisma.wishlist.deleteMany({ where: { productId: p.id } }).catch(() => {});
+      await this.prisma.lead.deleteMany({ where: { productId: p.id } }).catch(() => {});
+    }
+    await this.prisma.product.deleteMany({ where: { shopId: id } }).catch(() => {});
+
     await this.prisma.shop.delete({ where: { id } });
     return {
       success: true,
