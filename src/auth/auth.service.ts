@@ -113,9 +113,11 @@ export class AuthService {
       });
     }
 
-    if (!existingUser && dto.email) {
+    const cleanEmail = dto.email && typeof dto.email === 'string' && dto.email.trim() !== '' ? dto.email.trim().toLowerCase() : null;
+
+    if (!existingUser && cleanEmail) {
       existingUser = await this.prisma.user.findFirst({
-        where: { email: dto.email.toLowerCase() },
+        where: { email: cleanEmail },
         include: { shop: true },
       });
     }
@@ -126,10 +128,10 @@ export class AuthService {
     }
 
     // Check duplicate email across other users
-    if (dto.email) {
+    if (cleanEmail) {
       const existingEmail = await this.prisma.user.findFirst({
         where: {
-          email: dto.email.toLowerCase(),
+          email: cleanEmail,
           ...(existingUser ? { id: { not: existingUser.id } } : {}),
         },
       });
@@ -170,7 +172,7 @@ export class AuthService {
       // UPDATE existing user (who was created during sendOtp with isNew=true)
       const updateData: any = {
         name: dto.name || dto.ownerName || dto.shopName || existingUser.name || 'User',
-        email: dto.email ? dto.email.toLowerCase() : existingUser.email,
+        email: cleanEmail !== null ? cleanEmail : (existingUser.email || null),
         role: role,
         isNew: false,
       };
@@ -211,7 +213,7 @@ export class AuthService {
       // Create user if not existing
       user = await this.prisma.user.create({
         data: {
-          email: dto.email ? dto.email.toLowerCase() : null,
+          email: cleanEmail,
           password: hashedPassword,
           name: dto.name || dto.ownerName || dto.shopName || 'User',
           phone: dto.phone ? dto.phone.trim() : null,
@@ -257,7 +259,10 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ipAddress?: string | null, userAgent?: string | null) {
-    if (!dto.email && !dto.phone) {
+    const cleanEmail = dto.email?.trim();
+    const cleanPhone = dto.phone?.trim();
+
+    if (!cleanEmail && !cleanPhone) {
       throw new BadRequestException('Please provide email or phone number to login');
     }
 
@@ -269,13 +274,19 @@ export class AuthService {
     };
 
     let user: any = null;
-    if (dto.email) {
+
+    // 1. If input is formatted as an email (contains '@')
+    if (cleanEmail && cleanEmail.includes('@')) {
       user = await this.prisma.user.findFirst({
-        where: { email: dto.email.toLowerCase() },
+        where: { email: cleanEmail.toLowerCase() },
         include: { shop: shopInclude },
       });
-    } else if (dto.phone) {
-      const { phoneVariants, rawClean } = this.otpService.sanitizePhone(dto.phone);
+    }
+
+    // 2. If phone is provided, or cleanEmail was entered as a phone number
+    const potentialPhone = cleanPhone || (!cleanEmail?.includes('@') ? cleanEmail : null);
+    if (!user && potentialPhone) {
+      const { phoneVariants, rawClean } = this.otpService.sanitizePhone(potentialPhone);
       user = await this.prisma.user.findFirst({
         where: {
           OR: [
@@ -283,6 +294,14 @@ export class AuthService {
             { phone: { in: phoneVariants } },
           ],
         },
+        include: { shop: shopInclude },
+      });
+    }
+
+    // 3. Fallback check for email if not found yet
+    if (!user && cleanEmail) {
+      user = await this.prisma.user.findFirst({
+        where: { email: cleanEmail.toLowerCase() },
         include: { shop: shopInclude },
       });
     }

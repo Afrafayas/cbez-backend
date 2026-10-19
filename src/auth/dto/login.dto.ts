@@ -3,10 +3,12 @@ import { Transform } from 'class-transformer';
 
 export class LoginDto {
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined))
   @IsString()
   email?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined))
   @IsString()
   phone?: string;
 

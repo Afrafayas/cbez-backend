@@ -188,6 +188,7 @@ export class ProductsService {
     condition?: string;
     inStockOnly?: boolean | string;
     verifiedOnly?: boolean | string;
+    includeUnverified?: boolean | string;
     minRating?: number | string;
     maxBudget?: number | string;
     locationSearch?: string;
@@ -216,37 +217,7 @@ export class ProductsService {
       where.brand = { contains: query.brand, mode: 'insensitive' };
     }
 
-    if (
-      query.minPrice !== undefined &&
-      query.minPrice !== null &&
-      !isNaN(Number(query.minPrice)) &&
-      Number(query.minPrice) > 0
-    ) {
-      where.price = where.price || {};
-      where.price.gte = Number(query.minPrice);
-    }
-
-    if (
-      query.maxPrice !== undefined &&
-      query.maxPrice !== null &&
-      !isNaN(Number(query.maxPrice)) &&
-      Number(query.maxPrice) > 0
-    ) {
-      where.price = where.price || {};
-      where.price.lte = Number(query.maxPrice);
-    }
-
-    if (query.maxBudget) {
-      const budgetLimit = typeof query.maxBudget === 'number'
-        ? query.maxBudget
-        : parseInt(String(query.maxBudget).replace(/\D/g, ''), 10);
-      if (!isNaN(budgetLimit) && budgetLimit > 0) {
-        where.price = where.price || {};
-        where.price.lte = where.price.lte !== undefined
-          ? Math.min(where.price.lte, budgetLimit)
-          : budgetLimit;
-      }
-    }
+    // minPrice, maxPrice, and maxBudget are filtered in-memory using effective offer price below
 
     const inStock = query.inStockOnly === true || query.inStockOnly === 'true';
     if (inStock) {
@@ -258,11 +229,15 @@ export class ProductsService {
     const hasLat = rawLat !== undefined && rawLat !== null && !isNaN(Number(rawLat));
     const hasLng = rawLng !== undefined && rawLng !== null && !isNaN(Number(rawLng));
 
+    const includeUnverified = query.includeUnverified === true || query.includeUnverified === 'true';
     const isVerifiedOnly = query.verifiedOnly === true || query.verifiedOnly === 'true';
     const minRating = parseFloat(String(query.minRating)) || 0;
 
     const shopConditions: any = {};
-    if (isVerifiedOnly) {
+    // By default, public product listings must only show products from verified shops
+    if (!includeUnverified) {
+      shopConditions.verified = true;
+    } else if (isVerifiedOnly) {
       shopConditions.verified = true;
     }
     if (minRating > 0) {
@@ -301,8 +276,6 @@ export class ProductsService {
     }
 
     let orderBy: any = { createdAt: 'desc' };
-    if (query.sortBy === 'price-asc') orderBy = { price: 'asc' };
-    if (query.sortBy === 'price-desc') orderBy = { price: 'desc' };
     if (query.sortBy === 'stock') orderBy = { stock: 'desc' };
 
     const products = await this.prisma.product.findMany({
@@ -314,6 +287,52 @@ export class ProductsService {
     });
 
     let formattedProducts = products.map((p) => this.formatProduct(p));
+
+    // Exclude products from revoked or under-verification shops on public listing
+    if (!includeUnverified) {
+      formattedProducts = formattedProducts.filter((p) => {
+        if (!p.shop) return false;
+        if (p.shop.verified === false) return false;
+        if (p.shop.verificationStatus === 'UNDER_VERIFICATION') return false;
+        return true;
+      });
+    }
+
+    // Filter by minPrice, maxPrice, and maxBudget using effective offer price
+    if (
+      query.minPrice !== undefined &&
+      query.minPrice !== null &&
+      !isNaN(Number(query.minPrice)) &&
+      Number(query.minPrice) > 0
+    ) {
+      const minP = Number(query.minPrice);
+      formattedProducts = formattedProducts.filter(p => this.getEffectivePrice(p) >= minP);
+    }
+
+    if (
+      query.maxPrice !== undefined &&
+      query.maxPrice !== null &&
+      !isNaN(Number(query.maxPrice)) &&
+      Number(query.maxPrice) > 0
+    ) {
+      const maxP = Number(query.maxPrice);
+      formattedProducts = formattedProducts.filter(p => this.getEffectivePrice(p) <= maxP);
+    }
+
+    if (query.maxBudget) {
+      const budgetLimit = typeof query.maxBudget === 'number'
+        ? query.maxBudget
+        : parseInt(String(query.maxBudget).replace(/\D/g, ''), 10);
+      if (!isNaN(budgetLimit) && budgetLimit > 0) {
+        formattedProducts = formattedProducts.filter(p => this.getEffectivePrice(p) <= budgetLimit);
+      }
+    }
+
+    if (inStock) {
+      formattedProducts = formattedProducts.filter(
+        (p: any) => (p.stock !== undefined ? p.stock > 0 : true) && !p.isSoldOut
+      );
+    }
 
     // Handle Location Filtering by Latitude & Longitude
     if (hasLat && hasLng) {
@@ -384,24 +403,44 @@ export class ProductsService {
       });
     }
 
-    // Sort products: Out of stock always pushed to end, then by sortBy
+    // Sort products: Out of stock always pushed to end, then by sortBy using offer price
     formattedProducts.sort((a: any, b: any) => {
       const aOut = (a.stock !== undefined && a.stock <= 0) || Boolean(a.isSoldOut);
       const bOut = (b.stock !== undefined && b.stock <= 0) || Boolean(b.isSoldOut);
       if (aOut !== bOut) return aOut ? 1 : -1;
 
-      if (query.sortBy === 'price-asc') return a.price - b.price;
-      if (query.sortBy === 'price-desc') return b.price - a.price;
-      if (query.sortBy === 'stock') return (b.stock || 0) - (a.stock || 0);
+      if (query.sortBy === 'price-asc') {
+        return this.getEffectivePrice(a) - this.getEffectivePrice(b);
+      }
+      if (query.sortBy === 'price-desc') {
+        return this.getEffectivePrice(b) - this.getEffectivePrice(a);
+      }
+      if (query.sortBy === 'stock') {
+        return (b.stock || 0) - (a.stock || 0);
+      }
       if (query.sortBy === 'rating') {
         const ratingA = a.shop?.rating ?? 0;
         const ratingB = b.shop?.rating ?? 0;
         return ratingB - ratingA;
       }
+      if (query.sortBy === 'newest') {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      }
+      if (query.sortBy === 'alphabetical') {
+        return (a.name || '').localeCompare(b.name || '');
+      }
       if (query.sortBy === 'distance' && hasLat && hasLng) {
         return (a.distanceKm ?? 999999) - (b.distanceKm ?? 999999);
       }
-      return 0;
+
+      if (hasLat && hasLng && a.distanceKm !== undefined && b.distanceKm !== undefined) {
+        return (a.distanceKm ?? 999999) - (b.distanceKm ?? 999999);
+      }
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
     });
 
     const total = formattedProducts.length;
@@ -667,6 +706,23 @@ export class ProductsService {
     };
   }
 
+  private getEffectivePrice(p: any): number {
+    const regular = Number(p.price) || 0;
+    const rawOffer = p.offerPrice;
+    if (
+      rawOffer !== undefined &&
+      rawOffer !== null &&
+      rawOffer !== '' &&
+      !isNaN(Number(rawOffer))
+    ) {
+      const offer = Number(rawOffer);
+      if (offer > 0 && offer < regular) {
+        return offer;
+      }
+    }
+    return regular;
+  }
+
   private formatProduct(p: any) {
     let specs = {};
     let conditionInfo = {};
@@ -708,6 +764,7 @@ export class ProductsService {
       shopId: p.shopId,
       shop: p.shop ? {
         ...p.shop,
+        verificationStatus: p.shop.verified ? 'VERIFIED' : 'UNDER_VERIFICATION',
         latitude: p.shop.latitude,
         longitude: p.shop.longitude,
         lat: p.shop.latitude,

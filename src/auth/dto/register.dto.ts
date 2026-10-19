@@ -3,6 +3,7 @@ import { Transform } from 'class-transformer';
 
 export class RegisterDto {
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined))
   @IsEmail({}, { message: 'Please provide a valid email address' })
   email?: string;
 

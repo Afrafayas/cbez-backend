@@ -11,7 +11,7 @@ export function calculateShopProfileCompletion(shop?: any, ownerEmail?: string):
   const allMandatoryLabels = [
     'Owner Name', 'Profile Image', 'Shop Name', 'Address', 'City',
     'District', 'Country', 'Email Address', 'Aadhaar Number',
-    'PAN Number', 'Subscription Plan', 'Latitude', 'Longitude'
+    'PAN Number', 'Latitude', 'Longitude'
   ];
 
   if (!shop) {
@@ -19,7 +19,7 @@ export function calculateShopProfileCompletion(shop?: any, ownerEmail?: string):
       completionPercentage: 0,
       completedFields: [],
       missingFields: allMandatoryLabels,
-      totalFieldsCount: 13,
+      totalFieldsCount: 12,
       completedFieldsCount: 0,
       isFullyCompleted: false,
     };

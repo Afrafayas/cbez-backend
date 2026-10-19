@@ -340,27 +340,64 @@ export class ShopsService {
   }
 
   async remove(id: string) {
-    const existing = await this.prisma.shop.findUnique({ where: { id } });
+    const existing = await this.prisma.shop.findUnique({
+      where: { id },
+      include: { owner: true },
+    });
     if (!existing) {
       throw new NotFoundException(`Shop with ID ${id} not found`);
     }
 
-    // Clean up all products and their related records belonging to this shop from database
+    const ownerId = existing.ownerId;
+
+    // 1. Clean up all products and their related records belonging to this shop
     const shopProducts = await this.prisma.product.findMany({
       where: { shopId: id },
       select: { id: true },
     });
-    for (const p of shopProducts) {
-      await this.prisma.wishlist.deleteMany({ where: { productId: p.id } }).catch(() => {});
-      await this.prisma.lead.deleteMany({ where: { productId: p.id } }).catch(() => {});
-    }
-    await this.prisma.product.deleteMany({ where: { shopId: id } }).catch(() => {});
+    const productIds = shopProducts.map((p) => p.id);
 
+    if (productIds.length > 0) {
+      await this.prisma.wishlist.deleteMany({
+        where: { productId: { in: productIds } },
+      }).catch(() => {});
+
+      await this.prisma.lead.deleteMany({
+        where: { productId: { in: productIds } },
+      }).catch(() => {});
+
+      await this.prisma.product.deleteMany({
+        where: { id: { in: productIds } },
+      }).catch(() => {});
+    }
+
+    // 2. Clean up all shop-level related records (Leads, Subscriptions, Queues, Transactions, Banners, Follows)
+    await this.prisma.lead.deleteMany({ where: { shopId: id } }).catch(() => {});
+    await this.prisma.shopSubscription.deleteMany({ where: { shopId: id } }).catch(() => {});
+    await this.prisma.shopSubscriptionQueue.deleteMany({ where: { shopId: id } }).catch(() => {});
+    await this.prisma.transaction.deleteMany({ where: { shopId: id } }).catch(() => {});
+    await this.prisma.banner.deleteMany({ where: { shopId: id } }).catch(() => {});
+    await this.prisma.follow.deleteMany({ where: { shopId: id } }).catch(() => {});
+
+    // 3. Delete the shop itself from database
     await this.prisma.shop.delete({ where: { id } });
+
+    // 4. Delete the seller/owner user completely from database if assigned
+    if (ownerId) {
+      await this.prisma.activityLog.deleteMany({ where: { userId: ownerId } }).catch(() => {});
+      await this.prisma.follow.deleteMany({ where: { userId: ownerId } }).catch(() => {});
+      await this.prisma.wishlist.deleteMany({ where: { userId: ownerId } }).catch(() => {});
+      await this.prisma.networkInquiry.deleteMany({ where: { userId: ownerId } }).catch(() => {});
+
+      await this.prisma.user.delete({
+        where: { id: ownerId },
+      }).catch(() => {});
+    }
+
     return {
       success: true,
-      message: 'Shop deleted successfully',
-      data: { id },
+      message: 'Shop, related products, and owner user deleted successfully from database',
+      data: { id, ownerId },
     };
   }
 }
