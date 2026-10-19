@@ -170,6 +170,8 @@ export class ProductsService {
   }
 
   async findAll(query: {
+    page?: number;
+    limit?: number;
     search?: string;
     category?: string;
     brand?: string;
@@ -184,6 +186,11 @@ export class ProductsService {
     longitude?: number;
     radiusKm?: number;
     condition?: string;
+    inStockOnly?: boolean | string;
+    verifiedOnly?: boolean | string;
+    minRating?: number | string;
+    maxBudget?: number | string;
+    locationSearch?: string;
   }) {
     const where: any = {};
 
@@ -229,10 +236,38 @@ export class ProductsService {
       where.price.lte = Number(query.maxPrice);
     }
 
+    if (query.maxBudget) {
+      const budgetLimit = typeof query.maxBudget === 'number'
+        ? query.maxBudget
+        : parseInt(String(query.maxBudget).replace(/\D/g, ''), 10);
+      if (!isNaN(budgetLimit) && budgetLimit > 0) {
+        where.price = where.price || {};
+        where.price.lte = where.price.lte !== undefined
+          ? Math.min(where.price.lte, budgetLimit)
+          : budgetLimit;
+      }
+    }
+
+    const inStock = query.inStockOnly === true || query.inStockOnly === 'true';
+    if (inStock) {
+      where.stock = { gt: 0 };
+    }
+
     const rawLat = query.lat ?? query.latitude;
     const rawLng = query.lng ?? query.longitude;
     const hasLat = rawLat !== undefined && rawLat !== null && !isNaN(Number(rawLat));
     const hasLng = rawLng !== undefined && rawLng !== null && !isNaN(Number(rawLng));
+
+    const isVerifiedOnly = query.verifiedOnly === true || query.verifiedOnly === 'true';
+    const minRating = parseFloat(String(query.minRating)) || 0;
+
+    const shopConditions: any = {};
+    if (isVerifiedOnly) {
+      shopConditions.verified = true;
+    }
+    if (minRating > 0) {
+      shopConditions.rating = { gte: minRating };
+    }
 
     if (
       query.city &&
@@ -241,22 +276,28 @@ export class ProductsService {
       query.city !== 'All' &&
       (!hasLat || !hasLng)
     ) {
-      where.shop = {
-        OR: [
-          { city: { contains: query.city, mode: 'insensitive' } },
-          { address: { contains: query.city, mode: 'insensitive' } },
-        ],
-      };
+      shopConditions.OR = [
+        { city: { contains: query.city, mode: 'insensitive' } },
+        { address: { contains: query.city, mode: 'insensitive' } },
+      ];
+    }
+
+    if (Object.keys(shopConditions).length > 0) {
+      where.shop = shopConditions;
     }
 
     if (query.search && query.search.trim()) {
-      const s = query.search.trim();
-      where.OR = [
-        { name: { contains: s, mode: 'insensitive' } },
-        { brand: { contains: s, mode: 'insensitive' } },
-        { category: { contains: s, mode: 'insensitive' } },
-        { description: { contains: s, mode: 'insensitive' } },
-      ];
+      const terms = query.search.trim().split(/\s+/).filter(Boolean);
+      if (terms.length > 0) {
+        where.AND = terms.map(term => ({
+          OR: [
+            { name: { contains: term, mode: 'insensitive' } },
+            { brand: { contains: term, mode: 'insensitive' } },
+            { category: { contains: term, mode: 'insensitive' } },
+            { description: { contains: term, mode: 'insensitive' } },
+          ],
+        }));
+      }
     }
 
     let orderBy: any = { createdAt: 'desc' };
@@ -275,8 +316,6 @@ export class ProductsService {
     let formattedProducts = products.map((p) => this.formatProduct(p));
 
     // Handle Location Filtering by Latitude & Longitude
-    
-
     if (hasLat && hasLng) {
       const userLat = Number(rawLat);
       const userLng = Number(rawLng);
@@ -321,6 +360,16 @@ export class ProductsService {
       }
     }
 
+    // Location text keyword search (City, landmarks, or street address)
+    if (query.locationSearch && query.locationSearch.trim() && !hasLat && !hasLng) {
+      const locTerm = query.locationSearch.trim().toLowerCase();
+      formattedProducts = formattedProducts.filter((p: any) => {
+        const c = (p.shop?.city || '').toLowerCase();
+        const a = (p.shop?.address || '').toLowerCase();
+        return c.includes(locTerm) || a.includes(locTerm);
+      });
+    }
+
     // Handle Condition Filtering (e.g. "Grade A+ Like New", "Mint", "Good")
     if (
       query.condition &&
@@ -335,11 +384,53 @@ export class ProductsService {
       });
     }
 
+    // Sort products: Out of stock always pushed to end, then by sortBy
+    formattedProducts.sort((a: any, b: any) => {
+      const aOut = (a.stock !== undefined && a.stock <= 0) || Boolean(a.isSoldOut);
+      const bOut = (b.stock !== undefined && b.stock <= 0) || Boolean(b.isSoldOut);
+      if (aOut !== bOut) return aOut ? 1 : -1;
+
+      if (query.sortBy === 'price-asc') return a.price - b.price;
+      if (query.sortBy === 'price-desc') return b.price - a.price;
+      if (query.sortBy === 'stock') return (b.stock || 0) - (a.stock || 0);
+      if (query.sortBy === 'rating') {
+        const ratingA = a.shop?.rating ?? 0;
+        const ratingB = b.shop?.rating ?? 0;
+        return ratingB - ratingA;
+      }
+      if (query.sortBy === 'distance' && hasLat && hasLng) {
+        return (a.distanceKm ?? 999999) - (b.distanceKm ?? 999999);
+      }
+      return 0;
+    });
+
+    const total = formattedProducts.length;
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = query.limit !== undefined && query.limit !== null && String(query.limit) !== ''
+      ? Number(query.limit)
+      : (query.page ? 24 : undefined);
+
+    let totalPages = 1;
+    let paginatedProducts = formattedProducts;
+
+    if (limit && limit > 0) {
+      totalPages = Math.ceil(total / limit) || 1;
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      paginatedProducts = formattedProducts.slice(startIndex, endIndex);
+    } else {
+      totalPages = 1;
+    }
+
     return {
       success: true,
       message: 'Products fetched successfully',
       data: {
-        products: formattedProducts,
+        products: paginatedProducts,
+        total,
+        page,
+        limit: limit || total,
+        totalPages,
       },
     };
   }

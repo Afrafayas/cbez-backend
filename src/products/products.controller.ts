@@ -17,6 +17,8 @@ export class ProductsController {
 
   @Get()
   async findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
     @Query('search') search?: string,
     @Query('category') category?: string,
     @Query('brand') brand?: string,
@@ -31,8 +33,35 @@ export class ProductsController {
     @Query('longitude') longitude?: number,
     @Query('radiusKm') radiusKm?: number,
     @Query('condition') condition?: string,
+    @Query('inStockOnly') inStockOnly?: string,
+    @Query('verifiedOnly') verifiedOnly?: string,
+    @Query('minRating') minRating?: number,
+    @Query('maxBudget') maxBudget?: string,
+    @Query('locationSearch') locationSearch?: string,
   ) {
-    return this.productsService.findAll({ search, category, brand, minPrice, maxPrice, city, sortBy, shopId, lat, lng, latitude, longitude, radiusKm, condition });
+    return this.productsService.findAll({
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      search,
+      category,
+      brand,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      city,
+      sortBy,
+      shopId,
+      lat: lat ? Number(lat) : undefined,
+      lng: lng ? Number(lng) : undefined,
+      latitude: latitude ? Number(latitude) : undefined,
+      longitude: longitude ? Number(longitude) : undefined,
+      radiusKm: radiusKm ? Number(radiusKm) : undefined,
+      condition,
+      inStockOnly,
+      verifiedOnly,
+      minRating: minRating ? Number(minRating) : undefined,
+      maxBudget,
+      locationSearch,
+    });
   }
 
   @Get('category/:category')
