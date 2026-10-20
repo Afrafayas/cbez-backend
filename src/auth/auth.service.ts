@@ -61,21 +61,28 @@ export class AuthService {
 
   async register(dto: RegisterDto, ipAddress?: string | null, userAgent?: string | null, authHeader?: string | null) {
     const role = dto.role || 'customer';
+    let existingUser: any = null;
 
     let hashedPassword: string | null = null;
     if (dto.password && dto.password.trim()) {
       hashedPassword = await bcrypt.hash(dto.password, 10);
     }
 
-    // If phone not provided in body, attempt to resolve from Bearer token
-    if (!dto.phone && authHeader && authHeader.startsWith('Bearer ')) {
+    // If Bearer token is provided, attempt to resolve user directly by ID or phone
+    if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const tokenStr = authHeader.substring(7).trim();
         const decoded: any = this.jwtService.decode(tokenStr);
         if (decoded?.sub) {
-          const authUser = await this.prisma.user.findUnique({ where: { id: decoded.sub } });
-          if (authUser?.phone) {
-            dto.phone = authUser.phone;
+          const authUser = await this.prisma.user.findUnique({
+            where: { id: decoded.sub },
+            include: { shop: true },
+          });
+          if (authUser) {
+            existingUser = authUser;
+            if (authUser.phone && !dto.phone) {
+              dto.phone = authUser.phone;
+            }
           }
         }
       } catch (err) {
@@ -98,9 +105,8 @@ export class AuthService {
       }
     }
 
-    // Check if user already exists by phone or email
-    let existingUser: any = null;
-    if (dto.phone) {
+    // Check if user already exists by phone or email if not already resolved by token
+    if (!existingUser && dto.phone) {
       const { phoneVariants, rawClean } = this.otpService.sanitizePhone(dto.phone);
       existingUser = await this.prisma.user.findFirst({
         where: {
@@ -169,13 +175,23 @@ export class AuthService {
 
     let user: any;
     if (existingUser) {
+      // If seller exists but shop relation was not loaded, check shop collection directly
+      if (role === 'seller' && !existingUser.shop) {
+        existingUser.shop = await this.prisma.shop.findUnique({
+          where: { ownerId: existingUser.id },
+        });
+      }
+
       // UPDATE existing user (who was created during sendOtp with isNew=true)
       const updateData: any = {
         name: dto.name || dto.ownerName || dto.shopName || existingUser.name || 'User',
-        email: cleanEmail !== null ? cleanEmail : (existingUser.email || null),
         role: role,
         isNew: false,
       };
+      // Only set email if explicitly provided to avoid MongoDB unique index null collision
+      if (cleanEmail) {
+        updateData.email = cleanEmail;
+      }
       if (hashedPassword) {
         updateData.password = hashedPassword;
       }
@@ -211,18 +227,24 @@ export class AuthService {
       });
     } else {
       // Create user if not existing
+      const createData: any = {
+        password: hashedPassword,
+        name: dto.name || dto.ownerName || dto.shopName || 'User',
+        role: role,
+        isNew: false,
+        latitude: dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null,
+        longitude: dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude)) ? Number(dto.longitude) : null,
+        ...(shopCreateData ? { shop: { create: shopCreateData } } : {}),
+      };
+      if (cleanEmail) {
+        createData.email = cleanEmail;
+      }
+      if (dto.phone && dto.phone.trim()) {
+        createData.phone = dto.phone.trim();
+      }
+
       user = await this.prisma.user.create({
-        data: {
-          email: cleanEmail,
-          password: hashedPassword,
-          name: dto.name || dto.ownerName || dto.shopName || 'User',
-          phone: dto.phone ? dto.phone.trim() : null,
-          role: role,
-          isNew: false,
-          latitude: dto.latitude !== undefined && dto.latitude !== null && !isNaN(Number(dto.latitude)) ? Number(dto.latitude) : null,
-          longitude: dto.longitude !== undefined && dto.longitude !== null && !isNaN(Number(dto.longitude)) ? Number(dto.longitude) : null,
-          ...(shopCreateData ? { shop: { create: shopCreateData } } : {}),
-        },
+        data: createData,
         include: {
           shop: {
             include: {
