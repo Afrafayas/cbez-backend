@@ -244,6 +244,7 @@ export class ProductsService {
       shopConditions.rating = { gte: minRating };
     }
 
+    const hasSearch = Boolean(query.search && query.search.trim());
     if (
       query.city &&
       query.city !== 'all' &&
@@ -261,8 +262,34 @@ export class ProductsService {
       where.shop = shopConditions;
     }
 
-    if (query.search && query.search.trim()) {
-      const terms = query.search.trim().split(/\s+/).filter(Boolean);
+    const rawSearch = hasSearch ? query.search!.trim() : '';
+    let detectedMaxBudget: number | undefined = undefined;
+    let textSearchQuery = rawSearch;
+
+    if (hasSearch) {
+      // Check for budget patterns like "< 5k", "< 10k", "< 25k", "<5k", "<10k", "<25k", "under 5000", "under 10000", "5k", "10k", "25k"
+      const budgetPureMatch = rawSearch.match(/^<\s*(\d+)\s*(k)?$/i) ||
+        rawSearch.match(/^(?:under|below|less than)\s*(?:₹|rs\.?)?\s*(\d+)\s*(k)?$/i) ||
+        rawSearch.match(/^(\d+)\s*k$/i);
+
+      if (budgetPureMatch) {
+        const num = Number(budgetPureMatch[1]);
+        detectedMaxBudget = (budgetPureMatch[2] || rawSearch.toLowerCase().endsWith('k'))
+          ? num * 1000
+          : (num < 100 ? num * 1000 : num);
+        textSearchQuery = ''; // pure budget search
+      } else {
+        const mixedMatch = rawSearch.match(/(?:<|under|below)\s*(?:₹|rs\.?)?\s*(\d+)\s*(k)?/i);
+        if (mixedMatch) {
+          const num = Number(mixedMatch[1]);
+          detectedMaxBudget = mixedMatch[2] ? num * 1000 : (num < 100 ? num * 1000 : num);
+          textSearchQuery = rawSearch.replace(mixedMatch[0], '').trim();
+        }
+      }
+    }
+
+    if (textSearchQuery) {
+      const terms = textSearchQuery.split(/\s+/).filter(Boolean);
       if (terms.length > 0) {
         where.AND = terms.map(term => ({
           OR: [
@@ -270,6 +297,11 @@ export class ProductsService {
             { brand: { contains: term, mode: 'insensitive' } },
             { category: { contains: term, mode: 'insensitive' } },
             { description: { contains: term, mode: 'insensitive' } },
+            { specsJson: { contains: term, mode: 'insensitive' } },
+            { conditionJson: { contains: term, mode: 'insensitive' } },
+            { shop: { is: { name: { contains: term, mode: 'insensitive' } } } },
+            { shop: { is: { city: { contains: term, mode: 'insensitive' } } } },
+            { shop: { is: { address: { contains: term, mode: 'insensitive' } } } },
           ],
         }));
       }
@@ -295,6 +327,54 @@ export class ProductsService {
         if (p.shop.verified === false) return false;
         if (p.shop.verificationStatus === 'UNDER_VERIFICATION') return false;
         return true;
+      });
+    }
+
+    // Filter by detected budget from search query if any
+    if (detectedMaxBudget !== undefined && detectedMaxBudget > 0) {
+      formattedProducts = formattedProducts.filter(p => this.getEffectivePrice(p) <= detectedMaxBudget!);
+    }
+
+    // Search relevance scoring across all fields of the product
+    if (textSearchQuery) {
+      const lowerQuery = textSearchQuery.toLowerCase();
+      const terms = lowerQuery.split(/\s+/).filter(Boolean);
+
+      formattedProducts.forEach((p: any) => {
+        let score = 0;
+        const name = (p.name || '').toLowerCase();
+        const brand = (p.brand || '').toLowerCase();
+        const category = (p.category || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        const specsStr = JSON.stringify(p.specs || {}).toLowerCase();
+        const condStr = JSON.stringify(p.conditionInfo || {}).toLowerCase();
+        const shopName = (p.shop?.name || '').toLowerCase();
+        const shopCity = (p.shop?.city || '').toLowerCase();
+
+        // Exact match bonuses
+        if (name === lowerQuery) score += 250;
+        else if (name.startsWith(lowerQuery)) score += 150;
+        else if (name.includes(lowerQuery)) score += 90;
+
+        if (brand === lowerQuery) score += 120;
+        else if (brand.includes(lowerQuery)) score += 70;
+
+        if (category === lowerQuery) score += 100;
+        else if (category.includes(lowerQuery)) score += 60;
+
+        // Per-term scores across all product fields
+        terms.forEach((term) => {
+          if (name.includes(term)) score += 35;
+          if (brand.includes(term)) score += 25;
+          if (category.includes(term)) score += 20;
+          if (specsStr.includes(term)) score += 15;
+          if (desc.includes(term)) score += 10;
+          if (condStr.includes(term)) score += 10;
+          if (shopName.includes(term)) score += 10;
+          if (shopCity.includes(term)) score += 10;
+        });
+
+        p._searchScore = score;
       });
     }
 
@@ -389,6 +469,15 @@ export class ProductsService {
       });
     }
 
+    if (query.city && query.city !== 'all' && query.city !== 'All Cities' && query.city !== 'All' && !hasLat && !hasLng) {
+      const cityTerm = query.city.trim().toLowerCase();
+      formattedProducts = formattedProducts.filter((p: any) => {
+        const c = (p.shop?.city || '').toLowerCase();
+        const a = (p.shop?.address || '').toLowerCase();
+        return c.includes(cityTerm) || a.includes(cityTerm);
+      });
+    }
+
     // Handle Condition Filtering (e.g. "Grade A+ Like New", "Mint", "Good")
     if (
       query.condition &&
@@ -408,6 +497,13 @@ export class ProductsService {
       const aOut = (a.stock !== undefined && a.stock <= 0) || Boolean(a.isSoldOut);
       const bOut = (b.stock !== undefined && b.stock <= 0) || Boolean(b.isSoldOut);
       if (aOut !== bOut) return aOut ? 1 : -1;
+
+      // When searching, sort by search relevance score first if no explicit price/stock sort requested
+      if (textSearchQuery && (!query.sortBy || query.sortBy === 'featured')) {
+        const scoreA = a._searchScore ?? 0;
+        const scoreB = b._searchScore ?? 0;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+      }
 
       if (query.sortBy === 'price-asc') {
         return this.getEffectivePrice(a) - this.getEffectivePrice(b);
