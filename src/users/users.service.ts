@@ -89,7 +89,7 @@ export class UsersService {
 
     const updateData: any = {
       ...(dto.name && { name: dto.name }),
-      ...(dto.email !== undefined && { email: dto.email }),
+      ...(dto.email && typeof dto.email === 'string' && dto.email.trim() ? { email: dto.email.trim().toLowerCase() } : {}),
       ...(dto.phone !== undefined && { phone: dto.phone }),
       ...(dto.role && { role: dto.role }),
       isNew: false,
