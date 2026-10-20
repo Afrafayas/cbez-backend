@@ -170,6 +170,8 @@ export class ProductsService {
   }
 
   async findAll(query: {
+    page?: number;
+    limit?: number;
     search?: string;
     category?: string;
     brand?: string;
@@ -184,6 +186,12 @@ export class ProductsService {
     longitude?: number;
     radiusKm?: number;
     condition?: string;
+    inStockOnly?: boolean | string;
+    verifiedOnly?: boolean | string;
+    includeUnverified?: boolean | string;
+    minRating?: number | string;
+    maxBudget?: number | string;
+    locationSearch?: string;
   }) {
     const where: any = {};
 
@@ -209,24 +217,11 @@ export class ProductsService {
       where.brand = { contains: query.brand, mode: 'insensitive' };
     }
 
-    if (
-      query.minPrice !== undefined &&
-      query.minPrice !== null &&
-      !isNaN(Number(query.minPrice)) &&
-      Number(query.minPrice) > 0
-    ) {
-      where.price = where.price || {};
-      where.price.gte = Number(query.minPrice);
-    }
+    // minPrice, maxPrice, and maxBudget are filtered in-memory using effective offer price below
 
-    if (
-      query.maxPrice !== undefined &&
-      query.maxPrice !== null &&
-      !isNaN(Number(query.maxPrice)) &&
-      Number(query.maxPrice) > 0
-    ) {
-      where.price = where.price || {};
-      where.price.lte = Number(query.maxPrice);
+    const inStock = query.inStockOnly === true || query.inStockOnly === 'true';
+    if (inStock) {
+      where.stock = { gt: 0 };
     }
 
     const rawLat = query.lat ?? query.latitude;
@@ -234,6 +229,22 @@ export class ProductsService {
     const hasLat = rawLat !== undefined && rawLat !== null && !isNaN(Number(rawLat));
     const hasLng = rawLng !== undefined && rawLng !== null && !isNaN(Number(rawLng));
 
+    const includeUnverified = query.includeUnverified === true || query.includeUnverified === 'true';
+    const isVerifiedOnly = query.verifiedOnly === true || query.verifiedOnly === 'true';
+    const minRating = parseFloat(String(query.minRating)) || 0;
+
+    const shopConditions: any = {};
+    // By default, public product listings must only show products from verified shops
+    if (!includeUnverified) {
+      shopConditions.verified = true;
+    } else if (isVerifiedOnly) {
+      shopConditions.verified = true;
+    }
+    if (minRating > 0) {
+      shopConditions.rating = { gte: minRating };
+    }
+
+    const hasSearch = Boolean(query.search && query.search.trim());
     if (
       query.city &&
       query.city !== 'all' &&
@@ -241,27 +252,62 @@ export class ProductsService {
       query.city !== 'All' &&
       (!hasLat || !hasLng)
     ) {
-      where.shop = {
-        OR: [
-          { city: { contains: query.city, mode: 'insensitive' } },
-          { address: { contains: query.city, mode: 'insensitive' } },
-        ],
-      };
-    }
-
-    if (query.search && query.search.trim()) {
-      const s = query.search.trim();
-      where.OR = [
-        { name: { contains: s, mode: 'insensitive' } },
-        { brand: { contains: s, mode: 'insensitive' } },
-        { category: { contains: s, mode: 'insensitive' } },
-        { description: { contains: s, mode: 'insensitive' } },
+      shopConditions.OR = [
+        { city: { contains: query.city, mode: 'insensitive' } },
+        { address: { contains: query.city, mode: 'insensitive' } },
       ];
     }
 
+    if (Object.keys(shopConditions).length > 0) {
+      where.shop = shopConditions;
+    }
+
+    const rawSearch = hasSearch ? query.search!.trim() : '';
+    let detectedMaxBudget: number | undefined = undefined;
+    let textSearchQuery = rawSearch;
+
+    if (hasSearch) {
+      // Check for budget patterns like "< 5k", "< 10k", "< 25k", "<5k", "<10k", "<25k", "under 5000", "under 10000", "5k", "10k", "25k"
+      const budgetPureMatch = rawSearch.match(/^<\s*(\d+)\s*(k)?$/i) ||
+        rawSearch.match(/^(?:under|below|less than)\s*(?:₹|rs\.?)?\s*(\d+)\s*(k)?$/i) ||
+        rawSearch.match(/^(\d+)\s*k$/i);
+
+      if (budgetPureMatch) {
+        const num = Number(budgetPureMatch[1]);
+        detectedMaxBudget = (budgetPureMatch[2] || rawSearch.toLowerCase().endsWith('k'))
+          ? num * 1000
+          : (num < 100 ? num * 1000 : num);
+        textSearchQuery = ''; // pure budget search
+      } else {
+        const mixedMatch = rawSearch.match(/(?:<|under|below)\s*(?:₹|rs\.?)?\s*(\d+)\s*(k)?/i);
+        if (mixedMatch) {
+          const num = Number(mixedMatch[1]);
+          detectedMaxBudget = mixedMatch[2] ? num * 1000 : (num < 100 ? num * 1000 : num);
+          textSearchQuery = rawSearch.replace(mixedMatch[0], '').trim();
+        }
+      }
+    }
+
+    if (textSearchQuery) {
+      const terms = textSearchQuery.split(/\s+/).filter(Boolean);
+      if (terms.length > 0) {
+        where.AND = terms.map(term => ({
+          OR: [
+            { name: { contains: term, mode: 'insensitive' } },
+            { brand: { contains: term, mode: 'insensitive' } },
+            { category: { contains: term, mode: 'insensitive' } },
+            { description: { contains: term, mode: 'insensitive' } },
+            { specsJson: { contains: term, mode: 'insensitive' } },
+            { conditionJson: { contains: term, mode: 'insensitive' } },
+            { shop: { is: { name: { contains: term, mode: 'insensitive' } } } },
+            { shop: { is: { city: { contains: term, mode: 'insensitive' } } } },
+            { shop: { is: { address: { contains: term, mode: 'insensitive' } } } },
+          ],
+        }));
+      }
+    }
+
     let orderBy: any = { createdAt: 'desc' };
-    if (query.sortBy === 'price-asc') orderBy = { price: 'asc' };
-    if (query.sortBy === 'price-desc') orderBy = { price: 'desc' };
     if (query.sortBy === 'stock') orderBy = { stock: 'desc' };
 
     const products = await this.prisma.product.findMany({
@@ -274,9 +320,101 @@ export class ProductsService {
 
     let formattedProducts = products.map((p) => this.formatProduct(p));
 
-    // Handle Location Filtering by Latitude & Longitude
-    
+    // Exclude products from revoked or under-verification shops on public listing
+    if (!includeUnverified) {
+      formattedProducts = formattedProducts.filter((p) => {
+        if (!p.shop) return false;
+        if (p.shop.verified === false) return false;
+        if (p.shop.verificationStatus === 'UNDER_VERIFICATION') return false;
+        return true;
+      });
+    }
 
+    // Filter by detected budget from search query if any
+    if (detectedMaxBudget !== undefined && detectedMaxBudget > 0) {
+      formattedProducts = formattedProducts.filter(p => this.getEffectivePrice(p) <= detectedMaxBudget!);
+    }
+
+    // Search relevance scoring across all fields of the product
+    if (textSearchQuery) {
+      const lowerQuery = textSearchQuery.toLowerCase();
+      const terms = lowerQuery.split(/\s+/).filter(Boolean);
+
+      formattedProducts.forEach((p: any) => {
+        let score = 0;
+        const name = (p.name || '').toLowerCase();
+        const brand = (p.brand || '').toLowerCase();
+        const category = (p.category || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        const specsStr = JSON.stringify(p.specs || {}).toLowerCase();
+        const condStr = JSON.stringify(p.conditionInfo || {}).toLowerCase();
+        const shopName = (p.shop?.name || '').toLowerCase();
+        const shopCity = (p.shop?.city || '').toLowerCase();
+
+        // Exact match bonuses
+        if (name === lowerQuery) score += 250;
+        else if (name.startsWith(lowerQuery)) score += 150;
+        else if (name.includes(lowerQuery)) score += 90;
+
+        if (brand === lowerQuery) score += 120;
+        else if (brand.includes(lowerQuery)) score += 70;
+
+        if (category === lowerQuery) score += 100;
+        else if (category.includes(lowerQuery)) score += 60;
+
+        // Per-term scores across all product fields
+        terms.forEach((term) => {
+          if (name.includes(term)) score += 35;
+          if (brand.includes(term)) score += 25;
+          if (category.includes(term)) score += 20;
+          if (specsStr.includes(term)) score += 15;
+          if (desc.includes(term)) score += 10;
+          if (condStr.includes(term)) score += 10;
+          if (shopName.includes(term)) score += 10;
+          if (shopCity.includes(term)) score += 10;
+        });
+
+        p._searchScore = score;
+      });
+    }
+
+    // Filter by minPrice, maxPrice, and maxBudget using effective offer price
+    if (
+      query.minPrice !== undefined &&
+      query.minPrice !== null &&
+      !isNaN(Number(query.minPrice)) &&
+      Number(query.minPrice) > 0
+    ) {
+      const minP = Number(query.minPrice);
+      formattedProducts = formattedProducts.filter(p => this.getEffectivePrice(p) >= minP);
+    }
+
+    if (
+      query.maxPrice !== undefined &&
+      query.maxPrice !== null &&
+      !isNaN(Number(query.maxPrice)) &&
+      Number(query.maxPrice) > 0
+    ) {
+      const maxP = Number(query.maxPrice);
+      formattedProducts = formattedProducts.filter(p => this.getEffectivePrice(p) <= maxP);
+    }
+
+    if (query.maxBudget) {
+      const budgetLimit = typeof query.maxBudget === 'number'
+        ? query.maxBudget
+        : parseInt(String(query.maxBudget).replace(/\D/g, ''), 10);
+      if (!isNaN(budgetLimit) && budgetLimit > 0) {
+        formattedProducts = formattedProducts.filter(p => this.getEffectivePrice(p) <= budgetLimit);
+      }
+    }
+
+    if (inStock) {
+      formattedProducts = formattedProducts.filter(
+        (p: any) => (p.stock !== undefined ? p.stock > 0 : true) && !p.isSoldOut
+      );
+    }
+
+    // Handle Location Filtering by Latitude & Longitude
     if (hasLat && hasLng) {
       const userLat = Number(rawLat);
       const userLng = Number(rawLng);
@@ -321,6 +459,25 @@ export class ProductsService {
       }
     }
 
+    // Location text keyword search (City, landmarks, or street address)
+    if (query.locationSearch && query.locationSearch.trim() && !hasLat && !hasLng) {
+      const locTerm = query.locationSearch.trim().toLowerCase();
+      formattedProducts = formattedProducts.filter((p: any) => {
+        const c = (p.shop?.city || '').toLowerCase();
+        const a = (p.shop?.address || '').toLowerCase();
+        return c.includes(locTerm) || a.includes(locTerm);
+      });
+    }
+
+    if (query.city && query.city !== 'all' && query.city !== 'All Cities' && query.city !== 'All' && !hasLat && !hasLng) {
+      const cityTerm = query.city.trim().toLowerCase();
+      formattedProducts = formattedProducts.filter((p: any) => {
+        const c = (p.shop?.city || '').toLowerCase();
+        const a = (p.shop?.address || '').toLowerCase();
+        return c.includes(cityTerm) || a.includes(cityTerm);
+      });
+    }
+
     // Handle Condition Filtering (e.g. "Grade A+ Like New", "Mint", "Good")
     if (
       query.condition &&
@@ -335,11 +492,80 @@ export class ProductsService {
       });
     }
 
+    // Sort products: Out of stock always pushed to end, then by sortBy using offer price
+    formattedProducts.sort((a: any, b: any) => {
+      const aOut = (a.stock !== undefined && a.stock <= 0) || Boolean(a.isSoldOut);
+      const bOut = (b.stock !== undefined && b.stock <= 0) || Boolean(b.isSoldOut);
+      if (aOut !== bOut) return aOut ? 1 : -1;
+
+      // When searching, sort by search relevance score first if no explicit price/stock sort requested
+      if (textSearchQuery && (!query.sortBy || query.sortBy === 'featured')) {
+        const scoreA = a._searchScore ?? 0;
+        const scoreB = b._searchScore ?? 0;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+      }
+
+      if (query.sortBy === 'price-asc') {
+        return this.getEffectivePrice(a) - this.getEffectivePrice(b);
+      }
+      if (query.sortBy === 'price-desc') {
+        return this.getEffectivePrice(b) - this.getEffectivePrice(a);
+      }
+      if (query.sortBy === 'stock') {
+        return (b.stock || 0) - (a.stock || 0);
+      }
+      if (query.sortBy === 'rating') {
+        const ratingA = a.shop?.rating ?? 0;
+        const ratingB = b.shop?.rating ?? 0;
+        return ratingB - ratingA;
+      }
+      if (query.sortBy === 'newest') {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      }
+      if (query.sortBy === 'alphabetical') {
+        return (a.name || '').localeCompare(b.name || '');
+      }
+      if (query.sortBy === 'distance' && hasLat && hasLng) {
+        return (a.distanceKm ?? 999999) - (b.distanceKm ?? 999999);
+      }
+
+      if (hasLat && hasLng && a.distanceKm !== undefined && b.distanceKm !== undefined) {
+        return (a.distanceKm ?? 999999) - (b.distanceKm ?? 999999);
+      }
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    const total = formattedProducts.length;
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = query.limit !== undefined && query.limit !== null && String(query.limit) !== ''
+      ? Number(query.limit)
+      : (query.page ? 24 : undefined);
+
+    let totalPages = 1;
+    let paginatedProducts = formattedProducts;
+
+    if (limit && limit > 0) {
+      totalPages = Math.ceil(total / limit) || 1;
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      paginatedProducts = formattedProducts.slice(startIndex, endIndex);
+    } else {
+      totalPages = 1;
+    }
+
     return {
       success: true,
       message: 'Products fetched successfully',
       data: {
-        products: formattedProducts,
+        products: paginatedProducts,
+        total,
+        page,
+        limit: limit || total,
+        totalPages,
       },
     };
   }
@@ -576,6 +802,23 @@ export class ProductsService {
     };
   }
 
+  private getEffectivePrice(p: any): number {
+    const regular = Number(p.price) || 0;
+    const rawOffer = p.offerPrice;
+    if (
+      rawOffer !== undefined &&
+      rawOffer !== null &&
+      rawOffer !== '' &&
+      !isNaN(Number(rawOffer))
+    ) {
+      const offer = Number(rawOffer);
+      if (offer > 0 && offer < regular) {
+        return offer;
+      }
+    }
+    return regular;
+  }
+
   private formatProduct(p: any) {
     let specs = {};
     let conditionInfo = {};
@@ -617,6 +860,7 @@ export class ProductsService {
       shopId: p.shopId,
       shop: p.shop ? {
         ...p.shop,
+        verificationStatus: p.shop.verified ? 'VERIFIED' : 'UNDER_VERIFICATION',
         latitude: p.shop.latitude,
         longitude: p.shop.longitude,
         lat: p.shop.latitude,
