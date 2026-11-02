@@ -1,5 +1,5 @@
 import { UploadService } from '../upload/upload.service';
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -58,7 +58,7 @@ export class ProductsService {
     // Specifications are dynamically enriched from category specifications (RAM, Storage, Cameras, Battery, etc.)
     const sanitizedSpecs = await this.sanitizeSpecs(dto.specs, dto.category, dto);
 
-    if (dto.images && Array.isArray(dto.images) && dto.images.length > 0) {
+        if (dto.images && Array.isArray(dto.images) && dto.images.length > 0) {
       dto.images = await Promise.all(dto.images.map(img => this.uploadService.uploadBase64Image(img, 'products')));
     }
 
@@ -715,7 +715,7 @@ export class ProductsService {
           effectiveUserId = decoded.sub || decoded.id || decoded.userId;
           userRole = decoded.role || '';
         }
-      } catch (e) { }
+      } catch (e) {}
     }
 
     if (effectiveUserId) {
@@ -735,18 +735,18 @@ export class ProductsService {
         effectiveUserId,
         'DELETE_PRODUCT',
         `Deleted product "${product.name}"`,
-      ).catch(() => { });
+      ).catch(() => {});
     }
 
     // 1. Clean up associated wishlists to avoid dangling relations in MongoDB
     await this.prisma.wishlist.deleteMany({
       where: { productId: id },
-    }).catch(() => { });
+    }).catch(() => {});
 
     // 2. Clean up associated leads
     await this.prisma.lead.deleteMany({
       where: { productId: id },
-    }).catch(() => { });
+    }).catch(() => {});
 
     // 3. Delete product from MongoDB database
     await this.prisma.product.delete({
