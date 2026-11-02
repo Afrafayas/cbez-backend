@@ -1,4 +1,11 @@
-import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, IsArray } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsArray,
+} from 'class-validator';
 
 export class CategorySpecFieldDto {
   @IsString()
@@ -21,6 +28,18 @@ export class CategorySpecFieldDto {
   @IsString({ each: true })
   @IsOptional()
   options?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  searchable?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  allowCustomValue?: boolean;
+
+  // Form metadata; clients compare values case-insensitively when requested.
+  @IsOptional()
+  visibleWhen?: { field: string; values: string[]; caseInsensitive: boolean };
 
   @IsString()
   @IsOptional()
