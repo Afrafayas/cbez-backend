@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UploadService } from '../upload/upload.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { categorySpecifications } from './category-specifications';
 
 @Injectable()
 export class CategoriesService {
@@ -24,7 +25,7 @@ export class CategoriesService {
       name: category.name,
       slug: category.slug,
       image: category.image,
-      specConfig,
+      specConfig: categorySpecifications(category.name, category.slug, specConfig),
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
     };
