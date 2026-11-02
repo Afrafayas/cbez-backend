@@ -5,6 +5,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { categorySpecifications } from '../categories/category-specifications';
 
 @Injectable()
 export class ProductsService {
@@ -54,53 +55,8 @@ export class ProductsService {
       await this.subscriptionsService.checkProductLimit(shop.id);
     }
 
-    // Validate category and perform dynamic spec validation if category spec config exists
-    const categoryRecord = await this.prisma.category.findFirst({
-      where: {
-        OR: [
-          { name: { equals: dto.category, mode: 'insensitive' } },
-          { slug: dto.category },
-        ],
-      },
-    });
-
-    // Specifications are optional across all categories
-    const sanitizedSpecs: Record<string, string> = { ...(dto.specs || {}) };
-    if (categoryRecord && categoryRecord.specConfigJson) {
-      try {
-        const specRules: any[] = JSON.parse(categoryRecord.specConfigJson);
-        const incomingSpecs = dto.specs || {};
-
-        for (const rule of specRules) {
-          let val = incomingSpecs[rule.key];
-          if (val === undefined || val === null || val === '') {
-            val = incomingSpecs[rule.label];
-          }
-          if (val === undefined || val === null || val === '') {
-            const matchedEntry = Object.entries(incomingSpecs).find(
-              ([k]) =>
-                k.trim().toLowerCase() === rule.key.trim().toLowerCase() ||
-                k.trim().toLowerCase() === rule.label.trim().toLowerCase(),
-            );
-            if (matchedEntry) {
-              val = matchedEntry[1];
-            }
-          }
-          if (val === undefined || val === null || val === '') {
-            val = (dto as any)[rule.key] ?? (dto as any)[rule.label];
-          }
-
-          if (val !== undefined && val !== null && val !== '') {
-            sanitizedSpecs[rule.key] = String(val);
-            sanitizedSpecs[rule.label] = String(val);
-          }
-        }
-      } catch (e) {
-        Object.assign(sanitizedSpecs, dto.specs || {});
-      }
-    } else {
-      Object.assign(sanitizedSpecs, dto.specs || {});
-    }
+    // Specifications are dynamically enriched from category specifications (RAM, Storage, Cameras, Battery, etc.)
+    const sanitizedSpecs = await this.sanitizeSpecs(dto.specs, dto.category, dto);
 
         if (dto.images && Array.isArray(dto.images) && dto.images.length > 0) {
       dto.images = await Promise.all(dto.images.map(img => this.uploadService.uploadBase64Image(img, 'products')));
@@ -698,7 +654,9 @@ export class ProductsService {
     if (dto.stock !== undefined) updateData.stock = Number(dto.stock);
 
     if (dto.specs !== undefined) {
-      updateData.specsJson = JSON.stringify(dto.specs);
+      const targetCategory = dto.category || product.category;
+      const sanitizedSpecs = await this.sanitizeSpecs(dto.specs, targetCategory, dto);
+      updateData.specsJson = JSON.stringify(sanitizedSpecs);
     }
     if (dto.conditionInfo !== undefined) {
       updateData.conditionJson = JSON.stringify(dto.conditionInfo);
@@ -817,6 +775,72 @@ export class ProductsService {
       }
     }
     return regular;
+  }
+
+  private async sanitizeSpecs(
+    specs: Record<string, string> | undefined,
+    categoryNameOrSlug?: string,
+    dtoFallback?: any,
+  ): Promise<Record<string, string>> {
+    const sanitizedSpecs: Record<string, string> = { ...(specs || {}) };
+    if (!categoryNameOrSlug) return sanitizedSpecs;
+
+    try {
+      const categoryRecord = await this.prisma.category.findFirst({
+        where: {
+          OR: [
+            { name: { equals: categoryNameOrSlug, mode: 'insensitive' } },
+            { slug: categoryNameOrSlug },
+          ],
+        },
+      });
+
+      if (categoryRecord) {
+        let stored = [];
+        if (categoryRecord.specConfigJson) {
+          try {
+            stored = JSON.parse(categoryRecord.specConfigJson);
+          } catch (e) {
+            stored = [];
+          }
+        }
+        const specRules = categorySpecifications(
+          categoryRecord.name,
+          categoryRecord.slug || '',
+          stored,
+        );
+        const incomingSpecs = specs || {};
+
+        for (const rule of specRules) {
+          let val = incomingSpecs[rule.key];
+          if (val === undefined || val === null || val === '') {
+            val = incomingSpecs[rule.label];
+          }
+          if (val === undefined || val === null || val === '') {
+            const matchedEntry = Object.entries(incomingSpecs).find(
+              ([k]) =>
+                k.trim().toLowerCase() === rule.key.trim().toLowerCase() ||
+                k.trim().toLowerCase() === rule.label.trim().toLowerCase(),
+            );
+            if (matchedEntry) {
+              val = matchedEntry[1];
+            }
+          }
+          if (val === undefined || val === null || val === '') {
+            val = (dtoFallback as any)?.[rule.key] ?? (dtoFallback as any)?.[rule.label];
+          }
+
+          if (val !== undefined && val !== null && val !== '') {
+            sanitizedSpecs[rule.key] = String(val);
+            sanitizedSpecs[rule.label] = String(val);
+          }
+        }
+      }
+    } catch (e) {
+      // Keep sanitizedSpecs as-is
+    }
+
+    return sanitizedSpecs;
   }
 
   private formatProduct(p: any) {
