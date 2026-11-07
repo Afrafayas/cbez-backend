@@ -208,10 +208,7 @@ export class ProductsService {
       query.city !== 'All' &&
       (!hasLat || !hasLng)
     ) {
-      shopConditions.OR = [
-        { city: { contains: query.city, mode: 'insensitive' } },
-        { address: { contains: query.city, mode: 'insensitive' } },
-      ];
+      shopConditions.city = { contains: query.city, mode: 'insensitive' };
     }
 
     if (Object.keys(shopConditions).length > 0) {
@@ -429,8 +426,7 @@ export class ProductsService {
       const cityTerm = query.city.trim().toLowerCase();
       formattedProducts = formattedProducts.filter((p: any) => {
         const c = (p.shop?.city || '').toLowerCase();
-        const a = (p.shop?.address || '').toLowerCase();
-        return c.includes(cityTerm) || a.includes(cityTerm);
+        return c.includes(cityTerm);
       });
     }
 
